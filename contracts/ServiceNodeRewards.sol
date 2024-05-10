@@ -17,7 +17,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableUpgradeable, IServiceNodeRewards {
     using SafeERC20 for IERC20;
 
-    bool                            public          isActive;
+    bool                            public          started;
 
     IERC20                          public          designatedToken;
     IERC20                          public          foundationPool;
@@ -46,6 +46,14 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
 
     BN256G1.G1Point                 public          _aggregatePubkey;
 
+    // MODIFIERS
+    modifier whenStarted() {
+        if (!started) {
+            revert ContractNotStarted();
+        }
+        _;
+    }
+
     // EVENTS
     event NewSeededServiceNode           (uint64 indexed serviceNodeID, BN256G1.G1Point pubkey);
     event NewServiceNode                 (uint64 indexed serviceNodeID, address recipient, BN256G1.G1Point pubkey, ServiceNodeParams serviceNode, Contributor[] contributors);
@@ -62,8 +70,8 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     error DeleteSentinelNodeNotAllowed();
     error BLSPubkeyAlreadyExists      (uint64 serviceNodeID);
     error BLSPubkeyDoesNotMatch       (uint64 serviceNodeID, BN256G1.G1Point pubkey);
-    error ContractAlreadyActive       ();
-    error ContractNotActive           ();
+    error ContractAlreadyStarted      ();
+    error ContractNotStarted          ();
     error ContributionTotalMismatch   (uint256 required, uint256 provided);
     error EarlierLeaveRequestMade     (uint64 serviceNodeID, address recipient);
     error FirstContributorMismatch    (address operator, address contributor);
@@ -85,7 +93,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @param recipientRatio_ The recipient ratio for rewards
     function initialize(address token_, address foundationPool_, uint256 stakingRequirement_, uint256 liquidatorRewardRatio_, uint256 poolShareOfLiquidationRatio_, uint256 recipientRatio_) initializer()  public {
         if (recipientRatio_ < 1) revert RecipientRewardsTooLow();
-        isActive                     = false;
+        started                      = false;
         nextServiceNodeID            = 1;
         totalNodes                   = 0;
         blsNonSignerThreshold        = 0;
@@ -132,8 +140,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
 	/// @param recipientRewards The amount of rewards the recipient is allowed to claim.
     /// @param blsSignature - 128 byte bls proof of possession signature
     /// @param ids An array of service node IDs that did not sign and to be excluded from aggregation.
-	function updateRewardsBalance( address recipientAddress, uint256 recipientRewards, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external whenNotPaused {
-        if (!isActive) revert ContractNotActive();
+	function updateRewardsBalance( address recipientAddress, uint256 recipientRewards, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external whenNotPaused whenStarted {
         if (recipientAddress == address(0)) revert NullRecipient();
         if (ids.length > blsNonSignerThreshold) revert InsufficientBLSSignatures(serviceNodesLength() - ids.length, serviceNodesLength() - blsNonSignerThreshold);
         if (recipients[recipientAddress].rewards >= recipientRewards) revert RecipientRewardsTooLow();
@@ -189,8 +196,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @param operator - The address of the operator running the service node
     /// @param serviceNodeParams - Service node public key, signature proving ownership of public key and fee that operator is charging
     /// @param contributors - optional list of contributors to the service node, first is always the operator.
-    function _addBLSPublicKey(BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, address operator, ServiceNodeParams calldata serviceNodeParams, Contributor[] memory contributors) internal {
-        if (!isActive) revert ContractNotActive();
+    function _addBLSPublicKey(BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, address operator, ServiceNodeParams calldata serviceNodeParams, Contributor[] memory contributors) internal whenStarted {
         if (contributors.length > 0) {
             if (contributors[0].addr != operator) revert FirstContributorMismatch(operator, contributors[0].addr);
             uint256 totalAmount = 0;
@@ -236,8 +242,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @notice Initiates the removal of a BLS public key.
     /// @param serviceNodeID The ID of the service node.
     /// @param recipient The address of the recipient associated with the service node.
-    function _initiateRemoveBLSPublicKey(uint64 serviceNodeID, address recipient) internal {
-        if (!isActive) revert ContractNotActive();
+    function _initiateRemoveBLSPublicKey(uint64 serviceNodeID, address recipient) internal whenStarted {
         //TODO sean this needs to be any of the contributors
         address serviceNodeRecipient = _serviceNodes[serviceNodeID].operator;
         if(serviceNodeRecipient != recipient) revert RecipientAddressDoesNotMatch(serviceNodeRecipient, recipient, serviceNodeID);
@@ -251,8 +256,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @param blsPubkey - 64 bytes of the bls public key
     /// @param blsSignature - 128 byte bls proof of possession signature
     /// @param ids An array of service node IDs that did not sign and to be excluded from aggregation.
-    function removeBLSPublicKeyWithSignature(uint64 serviceNodeID, BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external whenNotPaused {
-        if (!isActive) revert ContractNotActive();
+    function removeBLSPublicKeyWithSignature(uint64 serviceNodeID, BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external whenNotPaused whenStarted {
         if (ids.length > blsNonSignerThreshold) revert InsufficientBLSSignatures(serviceNodesLength() - ids.length, serviceNodesLength() - blsNonSignerThreshold);
         if (blsPubkey.X != _serviceNodes[serviceNodeID].pubkey.X || blsPubkey.Y != _serviceNodes[serviceNodeID].pubkey.Y) revert BLSPubkeyDoesNotMatch(serviceNodeID, blsPubkey);
         //Validating signature
@@ -270,8 +274,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
 
     /// @notice Removes a BLS public key after a specified wait time, this can be called without the BLS signature because the node has waited significantly longer than the required wait time.
     /// @param serviceNodeID The ID of the service node to be removed.
-    function removeBLSPublicKeyAfterWaitTime(uint64 serviceNodeID) external whenNotPaused {
-        if (!isActive) revert ContractNotActive();
+    function removeBLSPublicKeyAfterWaitTime(uint64 serviceNodeID) external whenNotPaused whenStarted {
         uint256 leaveRequestTimestamp = _serviceNodes[serviceNodeID].leaveRequestTimestamp;
         if(leaveRequestTimestamp == 0) revert LeaveRequestTooEarly(serviceNodeID, leaveRequestTimestamp, block.timestamp);
         uint256 timestamp = leaveRequestTimestamp + MAX_SERVICE_NODE_REMOVAL_WAIT_TIME;
@@ -294,8 +297,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @param serviceNodeID The ID of the service node to be liquidated.
     /// @param blsPubkey - 64 bytes of the bls public key
     /// @param blsSignature - 128 byte bls proof of possession signature
-    function liquidateBLSPublicKeyWithSignature(uint64 serviceNodeID, BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external whenNotPaused {
-        if (!isActive) revert ContractNotActive();
+    function liquidateBLSPublicKeyWithSignature(uint64 serviceNodeID, BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external whenNotPaused whenStarted {
         if (ids.length > blsNonSignerThreshold) revert InsufficientBLSSignatures(serviceNodesLength() - ids.length, serviceNodesLength() - blsNonSignerThreshold);
         ServiceNode memory node = _serviceNodes[serviceNodeID];
         if (blsPubkey.X != node.pubkey.X || blsPubkey.Y != node.pubkey.Y) revert BLSPubkeyDoesNotMatch(serviceNodeID, blsPubkey);
@@ -433,29 +435,34 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         totalNodes = serviceNodesLength();
     }
 
-    /// @notice Updates the internal threshold for how many non signers an aggregate signature can contain before being invalid
+    /// @notice Update the threshold for how many non-signers an aggregate
+    /// signature can contain before being considered invalid.
     function updateBLSNonSignerThreshold() internal {
         uint256 oneThirdOfNodes = totalNodes / 3;
         blsNonSignerThreshold   = oneThirdOfNodes > blsNonSignerThresholdMax ? blsNonSignerThresholdMax : oneThirdOfNodes;
     }
 
-    /// @notice Contract begins locked and owner can start after nodes have been populated and hardfork has begun
+    /// @notice Start the contract and allow decentralised operation to the
+    /// service node list.
+    ///
+    /// @dev The contract begins locked and can be started by the owner after
+    /// nodes have been populated and the hard fork has begun.
     function start() public onlyOwner {
-        isActive = true;
+        started = true;
     }
 
-    /// @notice Pause will prevent new keys from being added and removed, and also the claiming of rewards
+    /// @notice Pause will prevent new keys from being added and removed, and
+    /// also the claiming of rewards
     function pause() public onlyOwner {
         _pause();
     }
-
 
     /// @notice Unpause will allow all functions to work as usual
     function unpause() public onlyOwner {
         _unpause();
     }
 
-    /// @notice Setter function for staking requirement, only callable by owner
+    /// @notice Update the staking requirement for the contract
     /// @param newRequirement the value being changed to
     function setStakingRequirement(uint256 newRequirement) public onlyOwner {
         require(newRequirement > 0, "Staking requirement must be positive");
