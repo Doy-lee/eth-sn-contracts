@@ -153,20 +153,14 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
 		emit RewardsBalanceUpdated(recipientAddress, recipientRewards, previousBalance);
 	}
 
-    /// @dev Internal function to handle reward claims. Will transfer the available rewards worth of our token to claimingAddress
-    /// @param claimingAddress The address claiming the rewards.
-    function _claimRewards(address claimingAddress) internal {
-        uint256 claimedRewards = recipients[claimingAddress].claimed;
-        uint256 totalRewards = recipients[claimingAddress].rewards;
-        uint256 amountToRedeem = totalRewards - claimedRewards;
-        recipients[claimingAddress].claimed = totalRewards;
-        SafeERC20.safeTransfer(designatedToken, claimingAddress, amountToRedeem);
-        emit RewardsClaimed(claimingAddress, amountToRedeem);
-    }
-
-    /// @notice Allows users to claim their rewards. Main entry point for users claiming. Should be called after first updating rewards
+    /// @notice Claim the rewards due for the active wallet invoking the claim.
     function claimRewards() public {
-        _claimRewards(msg.sender);
+        uint256 claimedRewards         = recipients[msg.sender].claimed;
+        uint256 totalRewards           = recipients[msg.sender].rewards;
+        uint256 amountToRedeem         = totalRewards - claimedRewards;
+        recipients[msg.sender].claimed = totalRewards;
+        SafeERC20.safeTransfer(designatedToken, msg.sender, amountToRedeem);
+        emit RewardsClaimed(claimingAddress, amountToRedeem);
     }
 
     /// MANAGING BLS PUBLIC KEY LIST
