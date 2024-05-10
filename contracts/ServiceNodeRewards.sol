@@ -17,28 +17,64 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableUpgradeable, IServiceNodeRewards {
     using SafeERC20 for IERC20;
 
-    bool public IsActive;
+    bool                            public          IsActive;
 
-    IERC20 public designatedToken;
-    IERC20 public foundationPool;
+    IERC20                          public          designatedToken;
+    IERC20                          public          foundationPool;
 
-    uint64 public constant LIST_SENTINEL                       = 0;
-    uint256 public constant MAX_SERVICE_NODE_REMOVAL_WAIT_TIME = 30 days;
+    uint64                          public constant LIST_SENTINEL                      = 0;
+    uint256                         public constant MAX_SERVICE_NODE_REMOVAL_WAIT_TIME = 30 days;
 
-    uint64  public nextServiceNodeID;
-    uint256 public totalNodes;
-    uint256 public blsNonSignerThreshold;
-    uint256 public blsNonSignerThresholdMax;
+    uint64                          public          nextServiceNodeID;
+    uint256                         public          totalNodes;
+    uint256                         public          blsNonSignerThreshold;
+    uint256                         public          blsNonSignerThresholdMax;
 
-    bytes32 public proofOfPossessionTag;
-    bytes32 public rewardTag;
-    bytes32 public removalTag;
-    bytes32 public liquidateTag;
+    bytes32                         public          proofOfPossessionTag;
+    bytes32                         public          rewardTag;
+    bytes32                         public          removalTag;
+    bytes32                         public          liquidateTag;
 
-    uint256 private _stakingRequirement;
-    uint256 _liquidatorRewardRatio;
-    uint256 _poolShareOfLiquidationRatio;
-    uint256 _recipientRatio;
+    uint256                         private         _stakingRequirement;
+    uint256                                         _liquidatorRewardRatio;
+    uint256                                         _poolShareOfLiquidationRatio;
+    uint256                                         _recipientRatio;
+
+    mapping(uint64  => ServiceNode) private         _serviceNodes;
+    mapping(address => Recipient  ) public          recipients;
+    mapping(bytes   => uint64     ) public          serviceNodeIDs; // Maps a bls public key (G1Point) to a serviceNodeID
+
+    BN256G1.G1Point                 public          _aggregatePubkey;
+
+    // EVENTS
+    event NewSeededServiceNode           (uint64 indexed serviceNodeID, BN256G1.G1Point pubkey);
+    event NewServiceNode                 (uint64 indexed serviceNodeID, address recipient, BN256G1.G1Point pubkey, ServiceNodeParams serviceNode, Contributor[] contributors);
+    event RewardsBalanceUpdated          (address indexed recipientAddress, uint256 amount, uint256 previousBalance);
+    event RewardsClaimed                 (address indexed recipientAddress, uint256 amount);
+    event BLSNonSignerThresholdMaxUpdated(uint256 newMax);
+    event ServiceNodeLiquidated          (uint64 indexed serviceNodeID, address recipient, BN256G1.G1Point pubkey);
+    event ServiceNodeRemoval             (uint64 indexed serviceNodeID, address recipient, uint256 returnedAmount, BN256G1.G1Point pubkey);
+    event ServiceNodeRemovalRequest      (uint64 indexed serviceNodeID, address recipient, BN256G1.G1Point pubkey);
+    event StakingRequirementUpdated      (uint256 newRequirement);
+
+    // ERRORS
+    error ArrayLengthMismatch         ();
+    error DeleteSentinelNodeNotAllowed();
+    error BLSPubkeyAlreadyExists      (uint64 serviceNodeID);
+    error BLSPubkeyDoesNotMatch       (uint64 serviceNodeID, BN256G1.G1Point pubkey);
+    error ContractAlreadyActive       ();
+    error ContractNotActive           ();
+    error ContributionTotalMismatch   (uint256 required, uint256 provided);
+    error EarlierLeaveRequestMade     (uint64 serviceNodeID, address recipient);
+    error FirstContributorMismatch    (address operator, address contributor);
+    error InsufficientBLSSignatures   (uint256 numSigners, uint256 requiredSigners);
+    error InvalidBLSSignature         ();
+    error InvalidBLSProofOfPossession ();
+    error LeaveRequestTooEarly        (uint64 serviceNodeID, uint256 timestamp, uint256 currenttime);
+    error NullRecipient               ();
+    error RecipientAddressDoesNotMatch(address expectedRecipient, address providedRecipient, uint256 serviceNodeID);
+    error RecipientRewardsTooLow      ();
+    error ServiceNodeDoesntExist      (uint64 serviceNodeID);
 
     /// @notice Constructor for the Service Node Rewards Contract
     /// @param token_ The token used for rewards
@@ -77,43 +113,6 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         _serviceNodes[LIST_SENTINEL].next = LIST_SENTINEL;
         __Ownable_init(msg.sender);
     }
-
-    mapping(uint64 => ServiceNode) private _serviceNodes;
-    mapping(address => Recipient) public recipients;
-    // Maps a bls public key (G1Point) to a serviceNodeID
-    mapping(bytes => uint64) public serviceNodeIDs;
-
-    BN256G1.G1Point public _aggregatePubkey;
-
-    // EVENTS
-    event NewSeededServiceNode(uint64 indexed serviceNodeID, BN256G1.G1Point pubkey);
-    event NewServiceNode( uint64 indexed serviceNodeID, address recipient, BN256G1.G1Point pubkey, ServiceNodeParams serviceNode, Contributor[] contributors);
-    event RewardsBalanceUpdated(address indexed recipientAddress, uint256 amount, uint256 previousBalance);
-    event RewardsClaimed(address indexed recipientAddress, uint256 amount);
-    event BLSNonSignerThresholdMaxUpdated(uint256 newMax);
-    event ServiceNodeLiquidated(uint64 indexed serviceNodeID, address recipient, BN256G1.G1Point pubkey);
-    event ServiceNodeRemoval(uint64 indexed serviceNodeID, address recipient, uint256 returnedAmount, BN256G1.G1Point pubkey);
-    event ServiceNodeRemovalRequest(uint64 indexed serviceNodeID, address recipient, BN256G1.G1Point pubkey);
-    event StakingRequirementUpdated(uint256 newRequirement);
-
-    // ERRORS
-    error ArrayLengthMismatch();
-    error DeleteSentinelNodeNotAllowed();
-    error BLSPubkeyAlreadyExists(uint64 serviceNodeID);
-    error BLSPubkeyDoesNotMatch(uint64 serviceNodeID, BN256G1.G1Point pubkey);
-    error ContractAlreadyActive();
-    error ContractNotActive();
-    error ContributionTotalMismatch(uint256 required, uint256 provided);
-    error EarlierLeaveRequestMade(uint64 serviceNodeID, address recipient);
-    error FirstContributorMismatch(address operator, address contributor);
-    error InsufficientBLSSignatures(uint256 numSigners, uint256 requiredSigners);
-    error InvalidBLSSignature();
-    error InvalidBLSProofOfPossession();
-    error LeaveRequestTooEarly(uint64 serviceNodeID, uint256 timestamp, uint256 currenttime);
-    error NullRecipient();
-    error RecipientAddressDoesNotMatch(address expectedRecipient, address providedRecipient, uint256 serviceNodeID);
-    error RecipientRewardsTooLow();
-    error ServiceNodeDoesntExist(uint64 serviceNodeID);
 
     //////////////////////////////////////////////////////////////
     //                                                          //
@@ -160,7 +159,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         uint256 amountToRedeem         = totalRewards - claimedRewards;
         recipients[msg.sender].claimed = totalRewards;
         SafeERC20.safeTransfer(designatedToken, msg.sender, amountToRedeem);
-        emit RewardsClaimed(claimingAddress, amountToRedeem);
+        emit RewardsClaimed(msg.sender, amountToRedeem);
     }
 
     /// MANAGING BLS PUBLIC KEY LIST
