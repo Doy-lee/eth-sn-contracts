@@ -84,7 +84,12 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     error RecipientRewardsTooLow      ();
     error ServiceNodeDoesntExist      (uint64 serviceNodeID);
 
-    /// @notice Constructor for the Service Node Rewards Contract
+    /// @notice Create a service node rewards contract responsible for managing
+    /// the service node list and rewards of participants.
+    ///
+    /// @dev Variables of the contract are deferred and initialised in the
+    /// constructor to permit contract upgradability.
+    ///
     /// @param token_ The token used for rewards
     /// @param foundationPool_ The foundation pool for the token
     /// @param stakingRequirement_ The staking requirement for service nodes
@@ -222,11 +227,22 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// network will then allow the user to claim their stake back via the
     /// `updateRewards` and `claimRewards` functions.
 
-    /// @notice Adds a BLS public key to the list of service nodes. Requires a proof of possession BLS signature to prove user controls the public key being added
-    /// @param blsPubkey - 64 bytes of the bls public key
-    /// @param blsSignature - 128 byte bls proof of possession signature
-    /// @param serviceNodeParams - Service node public key, signature proving ownership of public key and fee that operator is charging
-    /// @param contributors - optional list of contributors to the service node, first is always the operator.
+    /// @notice Adds a BLS public key to the list of service nodes. Requires
+    /// a proof of possession BLS signature to prove user controls the public
+    /// key being added.
+    ///
+    /// @param blsPubkey 64 byte BLS public key.
+    /// @param blsSignature 128 byte BLS signature that proves ownership of the
+    /// private component of the public key (proof-of-possession signature).
+    /// @param serviceNodeParams The service node to add including the x25519
+    /// public key and signature that proves ownership of the private component
+    /// of the public key and the desired fee the operator is charging.
+    /// @param contributors An optional list of contributors for
+    /// multi-contribution service nodes. The first contributor's information
+    /// must be set to the operator (the current interacting wallet).
+    ///
+    /// If this list of empty, it is assumed that the service node is ran in
+    /// a solo configuration under the current interacting wallet.
     function addBLSPublicKey(BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, ServiceNodeParams calldata serviceNodeParams, Contributor[] calldata contributors) external whenNotPaused {
         _addBLSPublicKey(blsPubkey, blsSignature, msg.sender, serviceNodeParams, contributors);
     }
