@@ -39,37 +39,38 @@ interface IServiceNodeRewards {
         uint256 serviceNodeSignature2;
         uint16  fee;
     }
+
     // Public Variables
-    function aggregatePubkey() external view returns (BN256G1.G1Point memory);
-    function blsNonSignerThreshold() external view returns (uint256);
-    function designatedToken() external view returns (IERC20);
-    function foundationPool() external view returns (IERC20);
-    function IsActive() external view returns (bool);
-    function liquidateTag() external view returns (bytes32);
-    function liquidatorRewardRatio() external view returns (uint256);
-    function nextServiceNodeID() external view returns (uint64);
+    function aggregatePubkey            () external view returns (BN256G1.G1Point memory);
+    function blsNonSignerThreshold      () external view returns (uint256);
+    function designatedToken            () external view returns (IERC20);
+    function foundationPool             () external view returns (IERC20);
+    function isActive                   () external view returns (bool);
+    function liquidateTag               () external view returns (bytes32);
+    function liquidatorRewardRatio      () external view returns (uint256);
+    function nextServiceNodeID          () external view returns (uint64);
     function poolShareOfLiquidationRatio() external view returns (uint256);
-    function proofOfPossessionTag() external view returns (bytes32);
-    function recipientRatio() external view returns (uint256);
-    function recipients(address) external view returns (uint256 rewards, uint256 claimed);
-    function removalTag() external view returns (bytes32);
-    function rewardTag() external view returns (bytes32);
-    function serviceNodes(uint64) external view returns (ServiceNode memory);
-    function serviceNodeIDs(bytes memory) external view returns (uint64);
-    function stakingRequirement() external view returns (uint256);
-    function totalNodes() external view returns (uint256);
+    function proofOfPossessionTag       () external view returns (bytes32);
+    function recipientRatio             () external view returns (uint256);
+    function recipients                 (address) external view returns (uint256 rewards, uint256 claimed);
+    function removalTag                 () external view returns (bytes32);
+    function rewardTag                  () external view returns (bytes32);
+    function serviceNodes               (uint64) external view returns (ServiceNode memory);
+    function serviceNodeIDs             (bytes memory) external view returns (uint64);
+    function stakingRequirement         () external view returns (uint256);
+    function totalNodes                 () external view returns (uint256);
 
     // Function Signatures
-	function updateRewardsBalance( address recipientAddress, uint256 recipientRewards, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external;
-    function claimRewards() external;
-    function addBLSPublicKey(BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, ServiceNodeParams calldata serviceNodeParams, Contributor[] calldata contributors) external;
-    function initiateRemoveBLSPublicKey(uint64 serviceNodeID) external;
-    function removeBLSPublicKeyWithSignature(uint64 serviceNodeID, BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external;
-    function removeBLSPublicKeyAfterWaitTime(uint64 serviceNodeID) external;
+    function updateRewardsBalance              (address recipientAddress, uint256 recipientRewards, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external;
+    function claimRewards                      () external;
+    function addBLSPublicKey                   (BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, ServiceNodeParams calldata serviceNodeParams, Contributor[] calldata contributors) external;
+    function initiateRemoveBLSPublicKey        (uint64 serviceNodeID) external;
+    function removeBLSPublicKeyWithSignature   (uint64 serviceNodeID, BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external;
+    function removeBLSPublicKeyAfterWaitTime   (uint64 serviceNodeID) external;
     function liquidateBLSPublicKeyWithSignature(uint64 serviceNodeID, BN256G1.G1Point calldata blsPubkey, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external;
-    function seedPublicKeyList(uint256[] calldata pkX, uint256[] calldata pkY, uint256[] calldata amounts) external;
-    function serviceNodesLength() external view returns (uint256 count);
-    function updateServiceNodesLength() external;
-    function start() external;
+    function seedPublicKeyList                 (uint256[] calldata pkX, uint256[] calldata pkY, uint256[] calldata amounts) external;
+    function serviceNodesLength                () external view returns (uint256 count);
+    function updateServiceNodesLength          () external;
+    function start                             () external;
 }
 
