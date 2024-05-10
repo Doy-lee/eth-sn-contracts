@@ -129,35 +129,68 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     //////////////////////////////////////////////////////////////
 
     /// CLAIMING REWARDS
-    /// This section contains all the functions necessary for a user to receive tokens from the service node network. Process is as follows:
-    /// 1) User will go to service node network and request they sign an amount that they are allowed to claim. Each node will individually sign and user will aggregate the message
-    /// 2) User will call `updateRewardsBalance` with an encoded message of the amount they are allowed to claim. This signature is checked over
-    ///    and the recipient structure is updated with the amount of tokens they are allowed to claim.
-    /// 3) User will call `claimRewards` which will pay out their balance in the recipients struct.
+    /// This section contains all the functions necessary for a user to receive
+    /// tokens from the service node network as follows. The user will:
+    ///
+    /// 1) Go to service node network and request they sign an amount that they
+    ///    are allowed to claim. Each node will individually sign the user's
+    ///    details into an aggregate signature.
+    /// 2) Call `updateRewardsBalance` with their details and the produced
+    ///    signature. This signature is verified and the user's rewards balance
+    ///    is updated.
+    /// 3) Call `claimRewards` which will pay out the unclaimed rewards to the
+    ///    user.
 
-	/// @notice Updates the rewards balance for a given recipient, requires a BLS signature from the network
-	/// @param recipientAddress The address of the recipient.
-	/// @param recipientRewards The amount of rewards the recipient is allowed to claim.
-    /// @param blsSignature - 128 byte bls proof of possession signature
-    /// @param ids An array of service node IDs that did not sign and to be excluded from aggregation.
-	function updateRewardsBalance( address recipientAddress, uint256 recipientRewards, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external whenNotPaused whenStarted {
-        if (recipientAddress == address(0)) revert NullRecipient();
-        if (ids.length > blsNonSignerThreshold) revert InsufficientBLSSignatures(serviceNodesLength() - ids.length, serviceNodesLength() - blsNonSignerThreshold);
-        if (recipients[recipientAddress].rewards >= recipientRewards) revert RecipientRewardsTooLow();
-		BN256G1.G1Point memory pubkey;
-		for(uint256 i = 0; i < ids.length; i++) {
-			pubkey = BN256G1.add(pubkey, _serviceNodes[ids[i]].pubkey);
-		}
-		pubkey = BN256G1.add(_aggregatePubkey, BN256G1.negate(pubkey));
-        BN256G2.G2Point memory signature = BN256G2.G2Point([blsSignature.sigs1,blsSignature.sigs0],[blsSignature.sigs3,blsSignature.sigs2]);
-		bytes memory encodedMessage = abi.encodePacked(rewardTag, recipientAddress, recipientRewards);
-		BN256G2.G2Point memory Hm = BN256G2.hashToG2(BN256G2.hashToField(string(encodedMessage)));
-		if (!Pairing.pairing2(BN256G1.P1(), signature, BN256G1.negate(pubkey), Hm)) revert InvalidBLSSignature();
+    /// @notice Updates the rewards balance for a given recipient. Calling this
+    /// requires a BLS signature from the network.
+    ///
+    /// @param recipientAddress Address of the recipient to update.
+    /// @param recipientRewards Amount of rewards the recipient is allowed to
+    /// claim.
+    /// @param blsSignature 128 byte BLS proof of possession signature, signed
+    /// over the tag, `recipientAddress` and `recipientRewards`.
+    /// @param ids Array of service node IDs that were non-signers and are to be
+    /// excluded from the `aggregatePubkey`.
+    function updateRewardsBalance(address recipientAddress, uint256 recipientRewards, BLSSignatureParams calldata blsSignature, uint64[] memory ids) external
+        whenNotPaused
+        whenStarted
+    {
+        if (recipientAddress == address(0)) {
+            revert NullRecipient();
+        }
 
-		uint256 previousBalance = recipients[recipientAddress].rewards;
-		recipients[recipientAddress].rewards = recipientRewards;
-		emit RewardsBalanceUpdated(recipientAddress, recipientRewards, previousBalance);
-	}
+        if (ids.length > blsNonSignerThreshold) {
+            revert InsufficientBLSSignatures(serviceNodesLength() - ids.length,
+                                             serviceNodesLength() - blsNonSignerThreshold);
+        }
+
+        uint256 previousRewards = recipients[receipientAddress].rewards;
+        if (previousRewards >= recipientRewards) {
+            revert RecipientRewardsTooLow();
+        }
+
+        // NOTE: Generate the non-signer pubkey
+        BN256G1.G1Point memory pubkey;
+        for(uint256 i = 0; i < ids.length; i++) {
+                pubkey = BN256G1.add(pubkey, _serviceNodes[ids[i]].pubkey);
+        }
+
+        // NOTE: Remove non-signer keys from the aggregate key
+        pubkey = BN256G1.add(_aggregatePubkey, BN256G1.negate(pubkey));
+
+        // NOTE: Create signature and verify
+        BN256G2.G2Point memory signature      = BN256G2.G2Point([blsSignature.sigs1,blsSignature.sigs0],[blsSignature.sigs3,blsSignature.sigs2]);
+        bytes           memory encodedMessage = abi.encodePacked(rewardTag, recipientAddress, recipientRewards);
+        BN256G2.G2Point memory Hm             = BN256G2.hashToG2(BN256G2.hashToField(string(encodedMessage)));
+
+        if (!Pairing.pairing2(BN256G1.P1(), signature, BN256G1.negate(pubkey), Hm)) {
+            revert InvalidBLSSignature();
+        }
+
+        // NOTE: Update rewards amount
+        recipients[recipientAddress].rewards = recipientRewards;
+        emit RewardsBalanceUpdated(recipientAddress, recipientRewards, previousRewards);
+    }
 
     /// @notice Claim the rewards due for the active wallet invoking the claim.
     function claimRewards() public {
@@ -170,16 +203,24 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     }
 
     /// MANAGING BLS PUBLIC KEY LIST
-    /// This section contains all the functions necessary to add and remove service nodes from the service nodes linked list.
-    /// The regular process for a new user is to call `addBLSPublicKey` with the details of their service node. The smart contract will do some verification over the bls key,
-    /// take a staked amount of SENT tokens, and then add this node to its internal public key list. Keys that are in this list will be able to participate in BLS 
-    /// signing events going forward (such as allowing the withdrawal of funds and removal of other BLS keys)
+    /// This section contains all the functions necessary to add and remove
+    /// service nodes from the service nodes linked list. The regular process
+    /// for a new user is to call `addBLSPublicKey` with the details of their
+    /// service node. The smart contract will do some verification over the bls
+    /// key, take a staked amount of SENT tokens, and then add this node to
+    /// its internal public key list. Keys that are in this list will be able to
+    /// participate in BLS signing events going forward (such as allowing the
+    /// withdrawal of funds and removal of other BLS keys)
     ///
-    /// To leave the network and get the staked amount back the user should first initate the removal of their key by calling `initiateRemoveBLSPublicKey` this function
-    /// simply notifys the network and begins a timer of 15 days which the user must wait before they can exit. Once the 15 days has passed the network will then provide a 
-    /// bls signature so the user can call `removeBLSPublicKeyWithSignature` which will remove their public key from the linked list. Once this occurs the network will then allow
-    /// the user to claim their stake back via the `updateRewards` and `claimRewards` functions.
-
+    /// To leave the network and get the staked amount back the user should
+    /// first initate the removal of their key by calling
+    /// `initiateRemoveBLSPublicKey` this function simply notifys the network
+    /// and begins a timer of 15 days which the user must wait before they can
+    /// exit. Once the 15 days has passed the network will then provide a bls
+    /// signature so the user can call `removeBLSPublicKeyWithSignature` which
+    /// will remove their public key from the linked list. Once this occurs the
+    /// network will then allow the user to claim their stake back via the
+    /// `updateRewards` and `claimRewards` functions.
 
     /// @notice Adds a BLS public key to the list of service nodes. Requires a proof of possession BLS signature to prove user controls the public key being added
     /// @param blsPubkey - 64 bytes of the bls public key
