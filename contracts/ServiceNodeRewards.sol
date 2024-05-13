@@ -169,7 +169,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
                                              serviceNodesLength() - blsNonSignerThreshold);
         }
 
-        uint256 previousRewards = recipients[receipientAddress].rewards;
+        uint256 previousRewards = recipients[recipientAddress].rewards;
         if (previousRewards >= recipientRewards) {
             revert RecipientRewardsTooLow();
         }
