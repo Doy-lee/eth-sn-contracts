@@ -2,9 +2,14 @@
 #include "service_node_rewards/ec_utils.hpp"
 #include "ethyl/utils.hpp"
 
+extern "C" {
+#include "crypto/keccak.h"
+}
+
 #include <algorithm>
 #include <chrono>
 #include <random>
+#include <cstring>
 
 const std::string proofOfPossessionTag = "BLS_SIG_TRYANDINCREMENT_POP";
 const std::string rewardTag = "BLS_SIG_TRYANDINCREMENT_REWARD";
@@ -31,11 +36,68 @@ bls::Signature ServiceNode::signHash(const std::array<unsigned char, 32>& hash) 
     secretKey.signHash(sig, hash.data(), hash.size());
     return sig;
 }
-using HashFunction = std::function<std::array<unsigned char,32>(const std::string&)>;
-bls::Signature ServiceNode::signHashFunc(const std::string& message, HashFunction hashFunc) const {
-    bls::Signature sig;
-    secretKey.signHashFunc(sig, message, hashFunc);
-    return sig;
+
+static void tryAndIncMapToHash(mcl::bn::G2& P, std::string_view message) {
+    std::vector<uint8_t> messageBytes = utils::fromHexString(message);
+    for (uint8_t increment = 0;; increment++) {
+        KECCAK_CTX keccak_ctx;
+        std::array<unsigned char, 32> hash;
+        keccak_init(&keccak_ctx);
+        keccak_update(&keccak_ctx, messageBytes.data(), messageBytes.size());
+        keccak_update(&keccak_ctx, reinterpret_cast<const uint8_t *>(&increment), sizeof(increment));
+        keccak_finish(&keccak_ctx, hash.data());
+
+        mcl::bn::Fp t;
+        t.setArrayMask(hash.data(), hash.size());
+        mcl::bn::G2::Fp x = mcl::bn::G2::Fp(t, 0);
+
+        mcl::bn::G2::Fp y;
+        mcl::bn::G2::getWeierstrass(y, x);
+        if (mcl::bn::G2::Fp::squareRoot(y, y)) {
+            bool b;
+            P.set(&b, x, y, false);
+            assert(b);
+            return; // Successfully mapped to curve, exit the loop
+        }
+    }
+}
+
+bls::Signature ServiceNode::signHashFunc(const std::string& message) const {
+    // NOTE: This is herumi's 'blsSignHash' deconstructed to its primitive
+    // function calls but instead of executing herumi's 'tryAndIncMapTo' which
+    // maps a hash to a point we execute our own mapping function. herumi's
+    // method increments the x-coordinate to try and map the point.
+    //
+    // This approach does not follow the original BLS paper's construction of the
+    // hash to curve method which does `H(m||i)` e.g. it hashes the message with
+    // an integer appended on the end. This integer is incremented and the
+    // message is re-hashed if the resulting hash could not be mapped onto the
+    // field.
+
+    // NOTE: blsSignHash(...) -> toG(...)
+    mcl::bn::G2 Hm;
+    {
+        tryAndIncMapToHash(Hm, message);
+        mcl::bn::BN::param.mapTo.mulByCofactor(Hm);
+    }
+
+    // NOTE: blsSignHash(...) -> GMulCT(...)
+    bls::Signature result = {};
+    result.clear();
+    {
+        mcl::bn::Fr s;
+        std::memcpy(const_cast<uint64_t*>(s.getUnit()), &secretKey.getPtr()->v, sizeof(s));
+        static_assert(sizeof(s) == sizeof(secretKey.getPtr()->v));
+
+        mcl::bn::G2 g2;
+        mcl::bn::G2::mulCT(g2, Hm, s);
+        std::memcpy(&result.getPtr()->v.x, &g2.x, sizeof(g2.x));
+        std::memcpy(&result.getPtr()->v.y, &g2.y, sizeof(g2.y));
+        std::memcpy(&result.getPtr()->v.z, &g2.z, sizeof(g2.z));
+        static_assert(sizeof(g2) == sizeof(result.getPtr()->v));
+    }
+
+    return result;
 }
 
 std::string ServiceNode::proofOfPossession(uint32_t chainID, const std::string& contractAddress, const std::string& senderEthAddress, const std::string& serviceNodePubkey) {
@@ -48,8 +110,7 @@ std::string ServiceNode::proofOfPossession(uint32_t chainID, const std::string& 
     //const std::array<unsigned char, 32> hash = utils::hash(message);
     //bls::Signature sig;
     //secretKey.signHash(sig, hash.data(), hash.size());
-    bls::Signature sig;
-    secretKey.signHashFunc(sig, message, utils::hash);
+    bls::Signature sig = signHashFunc(message);
     return utils::SignatureToHex(sig);
 }
 
@@ -121,7 +182,7 @@ std::string ServiceNodeList::aggregateSignatures(const std::string& message) {
     aggSig.clear();
     for(auto& node : nodes) {
         //aggSig.add(node.signHash(hash));
-        aggSig.add(node.signHashFunc(message, utils::hash));
+        aggSig.add(node.signHashFunc(message));
     }
     return utils::SignatureToHex(aggSig);
 }
@@ -131,7 +192,7 @@ std::string ServiceNodeList::aggregateSignaturesFromIndices(const std::string& m
     bls::Signature aggSig;
     aggSig.clear();
     for(auto& index : indices) {
-        aggSig.add(nodes[static_cast<size_t>(index)].signHashFunc(message, utils::hash));
+        aggSig.add(nodes[static_cast<size_t>(index)].signHashFunc(message));
     }
     return utils::SignatureToHex(aggSig);
 }
@@ -188,7 +249,7 @@ std::tuple<std::string, uint64_t, std::string> ServiceNodeList::liquidateNodeFro
     bls::Signature aggSig;
     aggSig.clear();
     for(auto& service_node_id: service_node_ids) {
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(message, utils::hash));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(message));
     }
     return std::make_tuple(pubkey, timestamp, utils::SignatureToHex(aggSig));
 }
@@ -202,7 +263,7 @@ std::tuple<std::string, uint64_t, std::string> ServiceNodeList::removeNodeFromIn
     bls::Signature aggSig;
     aggSig.clear();
     for(auto& service_node_id: service_node_ids) {
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(message, utils::hash));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(message));
     }
     return std::make_tuple(pubkey, timestamp, utils::SignatureToHex(aggSig));
 }
@@ -217,7 +278,7 @@ std::string ServiceNodeList::updateRewardsBalance(const std::string& address, co
     bls::Signature aggSig;
     aggSig.clear();
     for(auto& service_node_id: service_node_ids) {
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(message, utils::hash));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(message));
     }
     return utils::SignatureToHex(aggSig);
 }

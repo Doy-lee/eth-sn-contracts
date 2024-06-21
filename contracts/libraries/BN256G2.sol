@@ -604,18 +604,23 @@ library BN256G2 {
         return (x1, FIELD_MODULUS - x2);
     }
 
-    // Helper function to increment message bytes
-    function incrementMessage(bytes memory data) internal pure {
-        for (uint256 i = data.length; i > 0; i--) {
-            uint256 index = i - 1;
-            uint8 byteValue = uint8(data[index]);
-            if (byteValue != 0xFF) {
-                byteValue++;
-                data[index] = bytes1(byteValue);
-                break;
-            } else {
-                data[index] = bytes1(0); // Reset the byte to 0 when it overflows
+    function memcpy(bytes memory dest, bytes memory src, uint size) private pure {
+        // Copy by word
+        uint offset = 32; // Advance past the length encoding of the array
+        uint wordCount = size / 32;
+        assembly {
+            let destPtr := add(dest, offset)
+            let srcPtr := add(src, offset)
+            for { let i := 0 } lt(i, wordCount) { i := add(i, 1) } {
+                mstore(destPtr, mload(srcPtr))
+                destPtr := add(destPtr, 32)
+                srcPtr := add(srcPtr, 32)
             }
+        }
+
+        // Copy tail end (remaining bytes)
+        for (uint i = (wordCount * 32); i < size; i++) {
+            dest[i] = src[i];
         }
     }
 
@@ -629,29 +634,22 @@ library BN256G2 {
         uint256 y1 = 0;
         uint256 y2 = 0;
 
-        bool foundValidPoint = false;
+        bytes memory message_with_i = new bytes(message.length + 1 /*bytes*/);
+        memcpy(message_with_i, message, message.length);
 
-        // Iterate until we find a valid G2 point
-        while (!foundValidPoint) {
-            x1 = byteSwap(maskBits(uint256(convertArrayAsLE(keccak256(message)))));
-            x2 = 0;
-            // Try to get y^2
-            (uint256 yx, uint256 yy) = Get_yy_coordinate(x1, x2);
+        for (uint8 increment = 0;; increment++) { // Iterate until we find a valid G2 point
+            message_with_i[message_with_i.length - 1] = bytes1(increment);
+            x1                                        = byteSwap(maskBits(uint256(convertArrayAsLE(keccak256(message_with_i)))));
+            x2                                        = 0;
 
-            // Calculate square root
-            (uint256 sqrt_x, uint256 sqrt_y) = FQ2Sqrt(yx, yy);
-
-            // Check if this is a point
-            if (sqrt_x != 0 && sqrt_y != 0) {
+            (uint256 yx,     uint256 yy)     = Get_yy_coordinate(x1, x2); // Try to get y^2
+            (uint256 sqrt_x, uint256 sqrt_y) = FQ2Sqrt(yx, yy);           // Calculate square root
+            if (sqrt_x != 0 && sqrt_y != 0) {                             // Check if this is a point
                 y1 = sqrt_x;
                 y2 = sqrt_y;
                 if (IsOnCurve(x1, x2, y1, y2)) {
-                    foundValidPoint = true;
-                } else {
-                    incrementMessage(message);
+                    break;
                 }
-            } else {
-                incrementMessage(message);
             }
         }
 
