@@ -55,7 +55,7 @@ static void tryAndIncMapToHash(mcl::bn::G2& P, std::span<const char> bytes) {
     }
 }
 
-bls::Signature ServiceNode::signHashFunc(std::span<const char> bytes) const {
+bls::Signature ServiceNode::sign(std::span<const char> bytes) const {
     // NOTE: This is herumi's 'blsSignHash' deconstructed to its primitive
     // function calls but instead of executing herumi's 'tryAndIncMapTo' which
     // maps a hash to a point we execute our own mapping function. herumi's
@@ -114,7 +114,7 @@ std::string ServiceNode::proofOfPossession(uint32_t chainID, const std::string& 
     std::string fullTag = buildTag(proofOfPossessionTag, chainID, contractAddress);
     std::string message = "0x" + fullTag + getPublicKeyHex() + senderAddressOutput + utils::padTo32Bytes(utils::toHexString(serviceNodePubkey), utils::PaddingDirection::LEFT);
     std::vector<char> messageBytes = utils::fromHexString<char>(message);
-    bls::Signature sig = signHashFunc(messageBytes);
+    bls::Signature sig = sign(messageBytes);
     return utils::SignatureToHex(sig);
 }
 
@@ -185,7 +185,7 @@ std::string ServiceNodeList::aggregateSignatures(const std::string& message) {
     aggSig.clear();
     for(auto& node : nodes) {
         std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(node.signHashFunc(messageBytes));
+        aggSig.add(node.sign(messageBytes));
     }
     return utils::SignatureToHex(aggSig);
 }
@@ -195,7 +195,7 @@ std::string ServiceNodeList::aggregateSignaturesFromIndices(const std::string& m
     aggSig.clear();
     for(auto& index : indices) {
         std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(index)].signHashFunc(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(index)].sign(messageBytes));
     }
     return utils::SignatureToHex(aggSig);
 }
@@ -252,7 +252,7 @@ std::tuple<std::string, uint64_t, std::string> ServiceNodeList::liquidateNodeFro
     aggSig.clear();
     for(auto& service_node_id: service_node_ids) {
         std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].sign(messageBytes));
     }
     return std::make_tuple(pubkey, timestamp, utils::SignatureToHex(aggSig));
 }
@@ -266,7 +266,7 @@ std::tuple<std::string, uint64_t, std::string> ServiceNodeList::removeNodeFromIn
     aggSig.clear();
     for(auto& service_node_id: service_node_ids) {
         std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].sign(messageBytes));
     }
     return std::make_tuple(pubkey, timestamp, utils::SignatureToHex(aggSig));
 }
@@ -281,7 +281,7 @@ std::string ServiceNodeList::updateRewardsBalance(const std::string& address, co
     aggSig.clear();
     for(auto& service_node_id: service_node_ids) {
         std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].signHashFunc(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].sign(messageBytes));
     }
     return utils::SignatureToHex(aggSig);
 }

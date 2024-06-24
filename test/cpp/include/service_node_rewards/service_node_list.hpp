@@ -27,7 +27,7 @@ public:
     uint64_t service_node_id = SERVICE_NODE_LIST_SENTINEL;
     ServiceNode() = default;
     ServiceNode(uint64_t _service_node_id);
-    bls::Signature signHashFunc(std::span<const char> bytes) const;
+    bls::Signature sign(std::span<const char> bytes) const;
     std::string    proofOfPossession(uint32_t chainID, const std::string& contractAddress, const std::string& senderEthAddress, const std::string& serviceNodePubkey);
     std::string    getPublicKeyHex() const;
     bls::PublicKey getPublicKey() const;
