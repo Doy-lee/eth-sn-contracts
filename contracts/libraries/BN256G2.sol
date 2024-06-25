@@ -607,10 +607,12 @@ library BN256G2 {
 
         bytes memory message_with_i = new bytes(message.length + 1 /*bytes*/);
         memcpy(message_with_i, message, message.length);
+        bytes32 domain_separation_tag = keccak256(bytes(abi.encodePacked("BLS_SIG_HASH_TO_FIELD", block.chainid, address(this))));
 
         for (uint8 increment = 0;; increment++) { // Iterate until we find a valid G2 point
             message_with_i[message_with_i.length - 1] = bytes1(increment);
-            x1                                        = byteSwap(maskBits(uint256(convertArrayAsLE(keccak256(message_with_i)))));
+            // x1                                     = byteSwap(maskBits(uint256(convertArrayAsLE(keccak256(message_with_i)))));
+            x1                                        = hash_to_field(message_with_i, domain_separation_tag);
             x2                                        = 0;
 
             (uint256 yx,     uint256 yy)     = Get_yy_coordinate(x1, x2); // Try to get y^2
@@ -660,5 +662,283 @@ library BN256G2 {
             swapped |= byteValue << (256 - 8 - (i * 8));
         }
         return swapped;
+    }
+
+    uint256 private constant KECCAK256_BLOCKSIZE = 136;
+
+     /**
+     * Expands an arbitrary byte-string to 48 bytes using the `expand_message_xmd` method described in
+     * https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html
+     *
+     * Used for the VRF functionality.
+     *
+     * @dev This is not a general implementation as the output length fixed. It is tailor-made
+     *      for secp256k1_XMD:KECCAK_256_SSWU_RO_ hash_to_curve implementation.
+     *
+     * @dev DSTs longer than 255 bytes are considered unsound.
+     *      see https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html#name-domain-separation
+     *
+     * @param message the message to hash
+     * @param dst domain separation tag, used to make protocol instantiations unique
+     */
+    function expand_message_xmd_keccak256_single(bytes memory message, bytes memory dst) internal pure returns (bytes32 b1, bytes32 b2) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            if gt(mload(dst), 255) { revert(0, 0) }
+
+            let b0
+            {
+                // create payload for b0 hash
+                let b0Payload := mload(0x40)
+
+                // payload[0..KECCAK256_BLOCKSIZE] = 0
+
+                let b0PayloadO := KECCAK256_BLOCKSIZE // leave first block empty
+                let msg_o := 0x20 // skip length prefix
+
+                // payload[KECCAK256_BLOCKSIZE..KECCAK256_BLOCKSIZE+message.len()] = message[0..message.len()]
+                for { let i := 0 } lt(i, mload(message)) { i := add(i, 0x20) } {
+                    mstore(add(b0Payload, b0PayloadO), mload(add(message, msg_o)))
+                    b0PayloadO := add(b0PayloadO, 0x20)
+                    msg_o := add(msg_o, 0x20)
+                }
+
+                // payload[KECCAK256_BLOCKSIZE+message.len()+1..KECCAK256_BLOCKSIZE+message.len()+2] = 48
+                b0PayloadO := add(mload(message), 137)
+                mstore8(add(b0Payload, b0PayloadO), 0x30) // only support for 48 bytes output length
+
+                let dstO := 0x20
+                b0PayloadO := add(b0PayloadO, 2)
+
+                // payload[KECCAK256_BLOCKSIZE+message.len()+3..KECCAK256_BLOCKSIZE+message.len()+dst.len()]
+                // = dst[0..dst.len()]
+                for { let i := 0 } lt(i, mload(dst)) { i := add(i, 0x20) } {
+                    mstore(add(b0Payload, b0PayloadO), mload(add(dst, dstO)))
+                    b0PayloadO := add(b0PayloadO, 0x20)
+                    dstO := add(dstO, 0x20)
+                }
+
+                // payload[KECCAK256_BLOCKSIZE+message.len()+dst.len()..KECCAK256_BLOCKSIZE+message.len()+dst.len()+1]
+                // = dst.len()
+                b0PayloadO := add(add(mload(message), mload(dst)), 139)
+                mstore8(add(b0Payload, b0PayloadO), mload(dst))
+
+                b0 := keccak256(b0Payload, add(140, add(mload(dst), mload(message))))
+            }
+
+            // create payload for b1, b2 ... hashes
+            let bIPayload := mload(0x40)
+            mstore(bIPayload, b0)
+            // payload[32..33] = 1
+            mstore8(add(bIPayload, 0x20), 1)
+
+            let payloadO := 0x21
+            let dstO := 0x20
+
+            // payload[33..33+dst.len()] = dst[0..dst.len()]
+            for { let i := 0 } lt(i, mload(dst)) { i := add(i, 0x20) } {
+                mstore(add(bIPayload, payloadO), mload(add(dst, dstO)))
+                payloadO := add(payloadO, 0x20)
+                dstO := add(dstO, 0x20)
+            }
+
+            // payload[65+dst.len()..66+dst.len()] = dst.len()
+            mstore8(add(bIPayload, add(0x21, mload(dst))), mload(dst))
+
+            b1 := keccak256(bIPayload, add(34, mload(dst)))
+
+            // payload[0..32] = b0 XOR b1
+            mstore(bIPayload, xor(b0, b1))
+            // payload[32..33] = 2
+            mstore8(add(bIPayload, 0x20), 2)
+
+            b2 := keccak256(bIPayload, add(34, mload(dst)))
+        }
+    }
+
+    function expand_message_xmd_doyle(bytes memory message, bytes memory dst) internal pure returns (bytes32 b1, bytes32 b2) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            if gt(mload(dst), 255) { revert(0, 0) }
+
+            // NOTE: Calculate b_0 = H(msg_prime)
+            let b0
+            {
+                // NOTE: Calculate msg_prime
+                //
+                //  msg_prime = Z_pad || msg || l_i_b_str || I2OSP(0, 1) || DST_prime
+                //
+                // First allocate memory for msg_prime
+                let msg_prime_begin := mload(0x40)
+                let msg_prime_it    := msg_prime_begin
+
+                // NOTE: Create the Z_pad to prefix msg_prime
+                //
+                //   s_in_bytes   = Input block size of `H` where `H` = Keccak256 = 1088 bits (or 136 bytes)
+                //   Z_pad        = I2OSP(0, s_in_bytes)              = 136       = 0x<'0' repeat 272 times>
+                //   msg_prime_it = msg_prime_it || Z_pad
+                //
+                msg_prime_it := add(msg_prime_it, 136)
+
+                // NOTE: Append the user message to msg_prime
+                //
+                //   msg_prime_it = msg_prime_it || msg
+                //
+                let msg_size := mload(message)   // Load length prefix
+                let msg_it   := add(message, 32) // Skip length prefix
+                for { let i := 0 } lt(i, msg_size) { i := add(i, 32) } { // TODO: msg must be (N mod 32 == 0)
+                    mstore(msg_prime_it, mload(msg_it))
+                    msg_it       := add(msg_it, 32)
+                    msg_prime_it := add(msg_prime_it,  32)
+                }
+
+                // NOTE: Append the length in bytes string `l_i_b_str`
+                //
+                //   len_in_bytes = 48
+                //   l_i_b_str    = I2OSP(len_in_bytes, 2) = 0x0030 (little endian) = 0x3000 (big endian)
+                //   msg_prime_it = msg_prime_it || l_i_b_str
+                //
+                mstore8(msg_prime_it, 0x30)
+                msg_prime_it := add(msg_prime_it, 1)
+                mstore8(msg_prime_it, 0x00)
+                msg_prime_it := add(msg_prime_it, 1)
+
+                // NOTE: Append
+                //
+                //   I2OSP(0, 1)  = 0
+                //   msg_prime_it = msg_prime_it || I2OSP(0, 1)
+                //
+                msg_prime_it := add(msg_prime_it, 1)
+
+                // NOTE: Append DST_prime to msg_prime
+                //
+                //   DST_prime = DST || I20SP(len(DST), 1)
+                //
+                // We append in two steps, first append DST
+                //
+                //   msg_prime_it = msg_prime_it || DST
+                //
+                let dst_size := mload(dst)   // Load length prefix
+                let dst_it   := add(dst, 32) // Skip length prefix
+                for { let i := 0 } lt(i, dst_size) { i := add(i, 32) } { // TODO: dst must be (N mod 32 == 0)
+                    mstore(msg_prime_it, mload(dst_it))
+                    dst_it       := add(dst_it, 32)
+                    msg_prime_it := add(msg_prime_it,  32)
+                }
+
+                // NOTE: Then append I2OSP(...)
+                //
+                //   msg_prime_it = msg_prime_it || I2OSP(len(DST), 1)
+                //
+                mstore8(msg_prime_it, dst_size)
+                msg_prime_it := add(msg_prime_it, 1)
+
+                // NOTE: Construct b0 via H(msg_prime)
+                let msg_prime_size := sub(msg_prime_it, msg_prime_begin)
+                b0                 := keccak256(msg_prime_begin, msg_prime_size)
+            }
+
+            // NOTE: Construct b1 = H(b_0 || I2OSP(1, 1) || DST_prime)
+            let b1_begin := mload(0x40)
+            let b1_it    := b1_begin
+
+            // NOTE: Append b0 (32 byte keccak hash) to b1
+            //
+            //  b1 = b1 || b0
+            //
+            mstore(b1_it, b0)
+            b1_it := add(b1_it, 32)
+
+            // NOTE: Append I20SP(...) to b1
+            //
+            //  I2OSP(1, 1) = 1
+            //  b1          = b1 || I2OSP(1, 1)
+            //
+            mstore8(b1_it, b0)
+            b1_it := add(b1_it, 1)
+
+            // NOTE: Append DST_prime to b1
+            //
+            //   DST_prime = DST || I20SP(len(DST), 1)
+            //
+            // We append in two steps, first append DST
+            //
+            //   b1 = b1 || DST
+            //
+            let dst_size := mload(dst)   // Load length prefix
+            let dst_it   := add(dst, 32) // Skip length prefix
+            for { let i := 0 } lt(i, dst_size) { i := add(i, 32) } { // TODO: dst must be (N mod 32 == 0)
+                mstore(b1_it, mload(dst_it))
+                dst_it := add(dst_it, 32)
+                b1_it  := add(b1_it,  32)
+            }
+
+            // NOTE: Then append I2OSP(...)
+            //
+            //   b1_it = b1_it || I2OSP(len(DST), 1)
+            //
+            mstore8(b1_it, dst_size)
+            b1_it := add(b1_it, 1)
+
+            // NOTE: Construct b1 via H(msg_prime)
+            let b1_size := sub(b1_it, b1_begin)
+            b1          := keccak256(b1_begin, b1_size)
+
+            // NOTE: Construct b2 = H(xor(b_0, b_1) || I2OSP(i, 1) || DST_prime)
+            let b2_begin := mload(0x40)
+            let b2_it    := b2_begin
+
+            mstore(b2_it, xor(b0, b2))
+            // NOTE: Append I20SP(...) to b2
+            //
+            //  I2OSP(i, 1) = 2
+            //  b2          = b2 || I2OSP(i, 1)
+            //
+            mstore8(b2_it, b0)
+            b2_it := add(b2_it, 2)
+
+            // NOTE: Append DST_prime to b2
+            //
+            //   DST_prime = DST || I20SP(len(DST), 1)
+            //
+            // We append in two steps, first append DST
+            //
+            //   b2 = b2 || DST
+            //
+            dst_it := add(dst, 32) // Skip length prefix
+            for { let i := 0 } lt(i, dst_size) { i := add(i, 32) } { // TODO: dst must be (N mod 32 == 0)
+                mstore(b2_it, mload(dst_it))
+                dst_it := add(dst_it, 32)
+                b2_it  := add(b2_it,  32)
+            }
+
+            // NOTE: Then append I2OSP(...)
+            //
+            //   b2_it = b2_it || I2OSP(len(DST), 1)
+            //
+            mstore8(b2_it, dst_size)
+            b2_it := add(b2_it, 1)
+
+            let b2_size := sub(b2_it, b2_begin)
+            b2          := keccak256(b2_begin, b2_size)
+        }
+    }
+
+    function hash_to_field(bytes memory message, bytes32 dst) internal view returns (uint256 u) {
+        (bytes32 b1, bytes32 b2) = expand_message_xmd_keccak256_single(message, abi.encodePacked(dst));
+        // computes ([...b1[0..32], ...b2[0..16]] ^ 1) mod FIELD_MODULUS
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            let p := mload(0x40)                // next free memory slot
+            mstore(p, 0x30)                     // Length of Base
+            mstore(add(p, 0x20), 0x20)          // Length of Exponent
+            mstore(add(p, 0x40), 0x20)          // Length of Modulus
+            mstore(add(p, 0x60), b1)            // Base
+            mstore(add(p, 0x80), b2)
+            mstore(add(p, 0x90), 1)             // Exponent
+            mstore(add(p, 0xb0), FIELD_MODULUS) // Modulus
+            if iszero(staticcall(not(0), 0x05, p, 0xD0, p, 0x20)) { revert(0, 0) }
+            u := mload(p)
+        }
     }
 }
