@@ -6,6 +6,8 @@ extern "C" {
 #include "crypto/keccak.h"
 }
 
+#include <mcl/gmp_util.hpp>
+
 #include <algorithm>
 #include <chrono>
 #include <random>
@@ -15,6 +17,7 @@ const std::string proofOfPossessionTag = "BLS_SIG_TRYANDINCREMENT_POP";
 const std::string rewardTag = "BLS_SIG_TRYANDINCREMENT_REWARD";
 const std::string removalTag = "BLS_SIG_TRYANDINCREMENT_REMOVE";
 const std::string liquidateTag = "BLS_SIG_TRYANDINCREMENT_LIQUIDATE";
+const std::string hashToG2Tag = "BLS_SIG_HASH_TO_FIELD_TAG";
 
 ServiceNode::ServiceNode(uint64_t _service_node_id) {
     service_node_id = _service_node_id;
@@ -22,40 +25,87 @@ ServiceNode::ServiceNode(uint64_t _service_node_id) {
     secretKey.init();
 }
 
-std::string buildTag(const std::string& baseTag, uint32_t chainID, const std::string& contractAddress) {
+static std::string buildTag(const std::string& baseTag, uint32_t chainID, std::string_view contractAddress) {
     // Check if contractAddress starts with "0x" prefix
-    std::string contractAddressOutput = contractAddress;
+    std::string contractAddressOutput = std::string(contractAddress);
     if (contractAddressOutput.substr(0, 2) == "0x")
         contractAddressOutput = contractAddressOutput.substr(2);  // remove "0x"
     std::string concatenatedTag = "0x" + utils::toHexString(baseTag) + utils::padTo32Bytes(utils::decimalToHex(chainID), utils::PaddingDirection::LEFT) + contractAddressOutput;
     return utils::toHexString(utils::hash(concatenatedTag));
 }
 
-static void tryAndIncMapToHash(mcl::bn::G2& P, std::span<const char> bytes) {
+static mcl::bn::G2 mapToG2(std::span<const uint8_t> msg, std::span<const uint8_t> hashToG2Tag) {
+
+    mcl::bn::G2 result = {};
+    result.clear();
+
+    std::vector<uint8_t> messageWithI(msg.size() + 1);
+    std::memcpy(messageWithI.data(), msg.data(), msg.size());
+
+    // NOTE: The field modulus from Solidity BN256G2 in little endian
+    // format.
+    static const uint8_t FIELD_MODULUS_BYTES_LE[] = {
+        0x47, 0xfd, 0x7c, 0xd8, 0x16, 0x8c, 0x20, 0x3c, 0x8d,
+        0xca, 0x71, 0x68, 0x91, 0x6a, 0x81, 0x97, 0x5d, 0x58,
+        0x81, 0x81, 0xb6, 0x45, 0x50, 0xb8, 0x29, 0xa0, 0x31,
+        0xe1, 0x72, 0x4e, 0x64, 0x30,
+    };
+
+    mcl::Vint fieldModulus = {};
+    fieldModulus.setArray(FIELD_MODULUS_BYTES_LE, sizeof(FIELD_MODULUS_BYTES_LE));
+
     for (uint8_t increment = 0;; increment++) {
-        KECCAK_CTX keccak_ctx;
-        std::array<unsigned char, 32> hash;
-        keccak_init(&keccak_ctx);
-        keccak_update(&keccak_ctx, reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
-        keccak_update(&keccak_ctx, reinterpret_cast<const uint8_t *>(&increment), sizeof(increment));
-        keccak_finish(&keccak_ctx, hash.data());
+        messageWithI[messageWithI.size() - 1] = increment;
 
-        mcl::bn::Fp t;
-        t.setArrayMask(hash.data(), hash.size());
-        mcl::bn::G2::Fp x = mcl::bn::G2::Fp(t, 0);
+        // NOTE: Solidity's BN256G2.hashToField(msg, tag) => x1, x2
+        mcl::bn::Fp x1 = {}, x2 = {};
+        {
+            uint8_t expandedBytes[96] = {};
+            utils::ExpandMessageXMDKeccak256(expandedBytes, messageWithI, hashToG2Tag);
 
+            // NOTE: Split the output into 48 bytes to produce 2 points in the
+            // field.
+            size_t const chunkSizeInBytes = sizeof(expandedBytes) / 2;
+            size_t const chunkCount       = sizeof(expandedBytes) / chunkSizeInBytes;
+            mcl::Vint u[chunkCount]       = {};
+
+            for (size_t chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
+                // NOTE: Copy the 48 byte chunk for bigint
+                uint8_t chunk[chunkSizeInBytes] = {};
+                std::memcpy(chunk, expandedBytes + (chunkIndex * chunkSizeInBytes), sizeof(chunk));
+
+                // NOTE: Load the 48 byte chunk into the bigint
+                mcl::fp::local::byteSwap(chunk, sizeof(chunk)); // NOTE: VInt takes little endian
+
+                mcl::Vint base = {};
+                base.setArray(chunk, sizeof(chunk));
+
+                // NOTE: Do the mod against the field modulus
+                // u[i] = (base % fieldModulus)
+                mcl::Vint::mod(u[chunkIndex], base, fieldModulus);
+            }
+
+            static_assert(chunkCount == 2);
+            x1.setUnitArray(u[0].getUnit());
+            x2.setUnitArray(u[1].getUnit());
+        }
+
+        // NOTE: herumi/bls MapTo::mapToEC
+        mcl::bn::G2::Fp x = mcl::bn::G2::Fp(x1, x2);
         mcl::bn::G2::Fp y;
         mcl::bn::G2::getWeierstrass(y, x);
         if (mcl::bn::G2::Fp::squareRoot(y, y)) {
             bool b;
-            P.set(&b, x, y, false);
+            result.set(&b, x, y, false);
             assert(b);
-            return; // Successfully mapped to curve, exit the loop
+            return result; // Successfully mapped to curve, exit the loop
         }
     }
+
+    return result;
 }
 
-bls::Signature ServiceNode::blsSignHash(std::span<const char> bytes) const {
+bls::Signature ServiceNode::blsSignHash(std::span<const uint8_t> msg, uint32_t chainID, std::string_view contractAddress) const {
     // NOTE: This is herumi's 'blsSignHash' deconstructed to its primitive
     // function calls but instead of executing herumi's 'tryAndIncMapTo' which
     // maps a hash to a point we execute our own mapping function. herumi's
@@ -71,7 +121,9 @@ bls::Signature ServiceNode::blsSignHash(std::span<const char> bytes) const {
     // Map a string of `bytes` to a point on the curve for BLS
     mcl::bn::G2 Hm;
     {
-        tryAndIncMapToHash(Hm, bytes);
+        std::string hashToG2TagHex       = buildTag(hashToG2Tag, chainID, contractAddress);
+        std::vector<uint8_t> hashToG2Tag = utils::fromHexString<uint8_t>(hashToG2TagHex);
+        Hm                               = mapToG2(msg, hashToG2Tag);
         mcl::bn::BN::param.mapTo.mulByCofactor(Hm);
     }
 
@@ -112,10 +164,10 @@ std::string ServiceNode::proofOfPossession(uint32_t chainID, const std::string& 
     std::string senderAddressOutput = senderEthAddress;
     if (senderAddressOutput.substr(0, 2) == "0x")
         senderAddressOutput = senderAddressOutput.substr(2);  // remove "0x"
-    std::string fullTag = buildTag(proofOfPossessionTag, chainID, contractAddress);
-    std::string message = "0x" + fullTag + getPublicKeyHex() + senderAddressOutput + utils::padTo32Bytes(utils::toHexString(serviceNodePubkey), utils::PaddingDirection::LEFT);
-    std::vector<char> messageBytes = utils::fromHexString<char>(message);
-    bls::Signature sig = blsSignHash(messageBytes);
+    std::string fullTag               = buildTag(proofOfPossessionTag, chainID, contractAddress);
+    std::string message               = "0x" + fullTag + getPublicKeyHex() + senderAddressOutput + utils::padTo32Bytes(utils::toHexString(serviceNodePubkey), utils::PaddingDirection::LEFT);
+    std::vector<uint8_t> messageBytes = utils::fromHexString<uint8_t>(message);
+    bls::Signature sig                = blsSignHash(messageBytes, chainID, contractAddress);
     return utils::SignatureToHex(sig);
 }
 
@@ -181,22 +233,22 @@ std::string ServiceNodeList::aggregatePubkeyHex() {
     return utils::BLSPublicKeyToHex(aggregate_pubkey);
 }
 
-std::string ServiceNodeList::aggregateSignatures(const std::string& message) {
+std::string ServiceNodeList::aggregateSignatures(const std::string& message, uint32_t chainID, std::string_view contractAddress) {
     bls::Signature aggSig;
     aggSig.clear();
+    std::vector<uint8_t> messageBytes = utils::fromHexString<uint8_t>(message);
     for(auto& node : nodes) {
-        std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(node.blsSignHash(messageBytes));
+        aggSig.add(node.blsSignHash(messageBytes, chainID, contractAddress));
     }
     return utils::SignatureToHex(aggSig);
 }
 
-std::string ServiceNodeList::aggregateSignaturesFromIndices(const std::string& message, const std::vector<int64_t>& indices) {
+std::string ServiceNodeList::aggregateSignaturesFromIndices(const std::string& message, const std::vector<int64_t>& indices, uint32_t chainID, std::string_view contractAddress) {
     bls::Signature aggSig;
     aggSig.clear();
+    std::vector<uint8_t> messageBytes = utils::fromHexString<uint8_t>(message);
     for(auto& index : indices) {
-        std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(index)].blsSignHash(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(index)].blsSignHash(messageBytes, chainID, contractAddress));
     }
     return utils::SignatureToHex(aggSig);
 }
@@ -251,9 +303,9 @@ std::tuple<std::string, uint64_t, std::string> ServiceNodeList::liquidateNodeFro
     std::string message = "0x" + fullTag + pubkey + utils::padTo32Bytes(utils::decimalToHex(timestamp), utils::PaddingDirection::LEFT);
     bls::Signature aggSig;
     aggSig.clear();
+    std::vector<uint8_t> messageBytes = utils::fromHexString<uint8_t>(message);
     for(auto& service_node_id: service_node_ids) {
-        std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].blsSignHash(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].blsSignHash(messageBytes, chainID, contractAddress));
     }
     return std::make_tuple(pubkey, timestamp, utils::SignatureToHex(aggSig));
 }
@@ -265,14 +317,14 @@ std::tuple<std::string, uint64_t, std::string> ServiceNodeList::removeNodeFromIn
     std::string message = "0x" + fullTag + pubkey + utils::padTo32Bytes(utils::decimalToHex(timestamp), utils::PaddingDirection::LEFT);
     bls::Signature aggSig;
     aggSig.clear();
+    std::vector<uint8_t> messageBytes = utils::fromHexString<uint8_t>(message);
     for(auto& service_node_id: service_node_ids) {
-        std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].blsSignHash(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].blsSignHash(messageBytes, chainID, contractAddress));
     }
     return std::make_tuple(pubkey, timestamp, utils::SignatureToHex(aggSig));
 }
 
-std::string ServiceNodeList::updateRewardsBalance(const std::string& address, const uint64_t amount, const uint32_t chainID, const std::string& contractAddress, const std::vector<uint64_t>& service_node_ids) {
+std::string ServiceNodeList::updateRewardsBalance(const std::string& address, uint64_t amount, uint32_t chainID, const std::string& contractAddress, const std::vector<uint64_t>& service_node_ids) {
     std::string rewardAddressOutput = address;
     if (rewardAddressOutput.substr(0, 2) == "0x")
         rewardAddressOutput = rewardAddressOutput.substr(2);  // remove "0x"
@@ -280,9 +332,9 @@ std::string ServiceNodeList::updateRewardsBalance(const std::string& address, co
     std::string message = "0x" + fullTag + utils::padToNBytes(rewardAddressOutput, 20, utils::PaddingDirection::LEFT) + utils::padTo32Bytes(std::to_string(amount), utils::PaddingDirection::LEFT);
     bls::Signature aggSig;
     aggSig.clear();
+    std::vector<uint8_t> messageBytes = utils::fromHexString<uint8_t>(message);
     for(auto& service_node_id: service_node_ids) {
-        std::vector<char> messageBytes = utils::fromHexString<char>(message);
-        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].blsSignHash(messageBytes));
+        aggSig.add(nodes[static_cast<size_t>(findNodeIndex(service_node_id))].blsSignHash(messageBytes, chainID, contractAddress));
     }
     return utils::SignatureToHex(aggSig);
 }

@@ -1,59 +1,18 @@
-#define BLS_ETH
-#define MCLBN_FP_UNIT_SIZE 4
-#define MCLBN_FR_UNIT_SIZE 4
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#pragma GCC diagnostic ignored "-Wshadow"
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#include <bls/bls.hpp>
-#include <mcl/bn.hpp>
-#include <mcl/fp.hpp>
-#include <mcl/mapto_wb19.hpp>
-#undef MCLBN_NO_AUTOLINK
-#pragma GCC diagnostic pop
-
 #include <iostream>
 #include <iomanip>
-#include <algorithm>
 
-#include "service_node_rewards/ec_utils.hpp"
-#include "ethyl/utils.hpp"
-
+#include "service_node_rewards/ec_utils.hpp" // utils::Expand...
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 
-//using namespace mcl;
-//using namespace mcl::bn;
-
-//typedef mcl::MapTo_WB19<Fp, G1, Fp2, G2> MapTo;
-//typedef MapTo::E2 E2;
-
-
-
-//void printHexMD(const uint8_t md[256]) {
-    //for (int i = 0; i < 256; ++i) {
-        //std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(md[i]);
-        //if ((i + 1) % 16 == 0) {
-            //std::cout << std::endl;
-        //} else {
-            //std::cout << " ";
-        //}
-    //}
-//}
-
-//std::string stringToHex(const std::string& input)
-//{
-    //std::stringstream ss;
-    //ss << std::hex << std::setfill('0');
-    //for (char c : input)
-        //ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(c));
-    //return ss.str();
-//}
+// NOTE: Hardcoded msg/DST that matches the DST specified in JS unit-test, see:
+// eth-sn-contracts/test/unit-js/BN256G2.js
+std::string_view MESSAGE = "asdf";
+std::string_view DOMAIN_SEPARATION_TAG_BYTES32 =
+    "\xff\x54\x97\x7c\x9d\x08\xfb\x90\x98\xf6\xbe\xae\x0e\x46\x34\xcb\x9b\x2d\x4c\x2b\x9c\x86\xf0\xb3\xe2\xf2\xf0\x07\x3b\x73\xf5\x1c";
 
 std::array<std::string, 3> convertToHexStrings(const uint8_t md[96]) {
     std::array<std::string, 3> result;
-    
     for (int i = 0; i < 3; ++i) {
         std::stringstream ss;
         ss << "0x";
@@ -62,41 +21,35 @@ std::array<std::string, 3> convertToHexStrings(const uint8_t md[96]) {
         }
         result[i] = ss.str();
     }
-    
     return result;
 }
 
-TEST_CASE( "expand message using keccak", "[hashToField]" ) {
-    const char *msg = "asdf";
+TEST_CASE("Expand message using Keccak256 via 'expand_mesage_xmd'", "[RFC9380 hashToField]") {
+    assert(DOMAIN_SEPARATION_TAG_BYTES32.size() == 32
+          && "The domain separation tag must be 32 bytes to match the Solidity implementation and produce the same results.");
+
     uint8_t md[96];
-    mcl::fp::expand_message_xmd_hash(md, sizeof(md), msg, 4, msg, 4, utils::hash);
+    utils::ExpandMessageXMDKeccak256(
+        md,
+        std::span(reinterpret_cast<const uint8_t *>(MESSAGE.data()),                       MESSAGE.size()),
+        std::span(reinterpret_cast<const uint8_t *>(DOMAIN_SEPARATION_TAG_BYTES32.data()), DOMAIN_SEPARATION_TAG_BYTES32.size()));
 
     const auto hexStrings = convertToHexStrings(md);
-    //for (const auto& hexString : hexStrings) {
-        //std::cout << hexString << std::endl;
-    //}
 
-    // Should match the results from the smart contracts
-    //
-    //     describe("expand_message_xmd_keccak256", function () {
-    //       it.only("should not revert", async function () {
-    //         const message = "asdf";
-    //         const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
-    //         console.log(hexMsg);
-    //         await expect(hashToField.expand_message_xmd_keccak256(hexMsg, hexMsg)).to.not.be.reverted;
-    //         console.log(await hashToField.expand_message_xmd_keccak256(hexMsg, hexMsg));
-    //       });
-    //     });
-    REQUIRE(hexStrings[0] == "0xb7dfc070382dc6f51e559031b14d8f0f2a573d61127c7cb791d4b4608a74ff01");
-    REQUIRE(hexStrings[1] == "0x6d9ce93fab2366b5ce3c850bbd8835e879af2a342ad6bffbaf731fb93126a3f4");
-    REQUIRE(hexStrings[2] == "0x8a82641e464475fe7637f75324eef9a103cbbf53ec1a3324c1e0baf6b05e92e5");
+    // NOTE: Values calculated via JS unit-test, see: eth-sn-contracts/test/unit-js/BN256G2.js
+    INFO("Check that the hardcoded DST did not change in the Solidity implementation. The strings we compare against here were generated out-of-band.");
+    CHECK(hexStrings[0] == "0xe8f4d933efbcf56796fe680e8d947406e18862ab351bea98c5d9f8888080fe6f");
+    CHECK(hexStrings[1] == "0x097596243f18b9fa9d600eb8346663987b0153a3781e4a7b54bbbd833c00166c");
+    CHECK(hexStrings[2] == "0x24824cfba40d05f96f25933446d22f4e2c4323fa0f13904a264439aea47d28be");
 }
 
-TEST_CASE( "hash to fp2", "[hashToField]" ) {
+TEST_CASE("Hash to FP2", "[RFC9380 hashToField]") {
     bls::init(mclBn_CurveSNARK1);
-    const char *msg = "asdf";
     uint8_t md[96];
-    mcl::fp::expand_message_xmd_hash(md, sizeof(md), msg, 4, msg, 4, utils::hash);
+    utils::ExpandMessageXMDKeccak256(
+        md,
+        std::span(reinterpret_cast<const uint8_t *>(MESSAGE.data()),                       MESSAGE.size()),
+        std::span(reinterpret_cast<const uint8_t *>(DOMAIN_SEPARATION_TAG_BYTES32.data()), DOMAIN_SEPARATION_TAG_BYTES32.size()));
 
     mcl::bn::Fp out[2];
     bool b;
@@ -110,17 +63,7 @@ TEST_CASE( "hash to fp2", "[hashToField]" ) {
     std::ostringstream oss2;
     out[1].save(&b, oss2, mcl::IoAuto);
 
-    //    describe("hash_to_field", function () {
-    //      it.only("should return two uint256 values", async function () {
-    //        const message = "asdf";
-    //        const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
-    //    
-    //        const result = await hashToField.hash_to_field(hexMsg, hexMsg);
-    //    
-    //        expect(result).to.have.length(2);
-    //        console.log(result[0]);
-    //        console.log(result[1]);
-    //      });
-    REQUIRE(oss.str() == "18488821436036968639067232489934022592333274628566486098353443781605964295553");
-    REQUIRE(oss2.str() == "7774746543242992034824500334882847626558424832512738634355427079977301983471");
+    // NOTE: Values calculated via JS unit-test, see: eth-sn-contracts/test/unit-js/BN256G2.js
+    CHECK(oss.str()  == "11032720900463547873271743099548770716954083165825879766348225717865290248407");
+    CHECK(oss2.str() == "15644586462817709158587850387782908059942803533371602959682274737078222802151");
 }
