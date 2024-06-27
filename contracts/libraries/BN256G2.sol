@@ -577,8 +577,7 @@ library BN256G2 {
         return (x1, FIELD_MODULUS - x2);
     }
 
-    // hashes to G2 using the try and increment method
-    //function mapToG2(uint256 h) internal view returns (G2Point memory) {
+    // Hashes to G2 using the try and increment method
     function mapToG2(bytes memory message, bytes32 hashToG2Tag) internal view returns (G2Point memory) {
 
         // Define the G2Point coordinates
