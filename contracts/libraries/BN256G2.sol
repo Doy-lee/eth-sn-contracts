@@ -577,26 +577,6 @@ library BN256G2 {
         return (x1, FIELD_MODULUS - x2);
     }
 
-    function bytesMemcpy(bytes memory dest, bytes memory src, uint size) private pure {
-        // Copy by word
-        uint offset = 32; // Advance past the length encoding of the array
-        uint wordCount = size / 32;
-        assembly {
-            let destPtr := add(dest, offset)
-            let srcPtr := add(src, offset)
-            for { let i := 0 } lt(i, wordCount) { i := add(i, 1) } {
-                mstore(destPtr, mload(srcPtr))
-                destPtr := add(destPtr, 32)
-                srcPtr := add(srcPtr, 32)
-            }
-        }
-
-        // Copy tail end (remaining bytes)
-        for (uint i = (wordCount * 32); i < size; i++) {
-            dest[i] = src[i];
-        }
-    }
-
     // hashes to G2 using the try and increment method
     //function mapToG2(uint256 h) internal view returns (G2Point memory) {
     function mapToG2(bytes memory message, bytes32 hashToG2Tag) internal view returns (G2Point memory) {
@@ -608,13 +588,15 @@ library BN256G2 {
         uint256 y2 = 0;
 
         bytes memory message_with_i = new bytes(message.length + 1 /*bytes*/);
-        bytesMemcpy(message_with_i, message, message.length);
+        for (uint index = 0; index < message.length; index++) {
+            message_with_i[index] = message[index];
+        }
 
         for (uint8 increment = 0;; increment++) { // Iterate until we find a valid G2 point
             message_with_i[message_with_i.length - 1] = bytes1(increment);
 
-            // TODO: Why does removing this line cause all the tests to start
-            // failing with invalid BLS proof of possession???
+            // TODO: Has side-effects in devnet that causes the hashToField to
+            // generate the correct values. No-op on other networks.
             console.logBytes(message_with_i);
 
             (x1, x2) = hashToField(message_with_i, hashToG2Tag);
