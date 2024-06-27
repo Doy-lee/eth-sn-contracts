@@ -63,31 +63,11 @@ static mcl::bn::G2 mapToG2(std::span<const uint8_t> msg, std::span<const uint8_t
             uint8_t expandedBytes[96] = {};
             utils::ExpandMessageXMDKeccak256(expandedBytes, messageWithI, hashToG2Tag);
 
-            // NOTE: Split the output into 48 bytes to produce 2 points in the
-            // field.
-            size_t const chunkSizeInBytes = sizeof(expandedBytes) / 2;
-            size_t const chunkCount       = sizeof(expandedBytes) / chunkSizeInBytes;
-            mcl::Vint u[chunkCount]       = {};
-
-            for (size_t chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
-                // NOTE: Copy the 48 byte chunk for bigint
-                uint8_t chunk[chunkSizeInBytes] = {};
-                std::memcpy(chunk, expandedBytes + (chunkIndex * chunkSizeInBytes), sizeof(chunk));
-
-                // NOTE: Load the 48 byte chunk into the bigint
-                mcl::fp::local::byteSwap(chunk, sizeof(chunk)); // NOTE: VInt takes little endian
-
-                mcl::Vint base = {};
-                base.setArray(chunk, sizeof(chunk));
-
-                // NOTE: Do the mod against the field modulus
-                // u[i] = (base % fieldModulus)
-                mcl::Vint::mod(u[chunkIndex], base, fieldModulus);
-            }
-
-            static_assert(chunkCount == 2);
-            x1.setUnitArray(u[0].getUnit());
-            x2.setUnitArray(u[1].getUnit());
+            bool b;
+            x1.setBigEndianMod(&b, expandedBytes + 0,  48);
+            assert(b);
+            x2.setBigEndianMod(&b, expandedBytes + 48, 48);
+            assert(b);
         }
 
         // NOTE: herumi/bls MapTo::mapToEC
