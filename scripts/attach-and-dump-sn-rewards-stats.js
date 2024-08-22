@@ -1,18 +1,30 @@
 const { ethers } = require('hardhat');
 async function main() {
+    const reward_pool_address = '0x84a648F74Eaf037dD9558987F6179E692d5F2566';
+    const sn_rewards_address  = '0xb691e7C159369475D0a3d4694639ae0144c7bAB2';
+
+    const reward_pool_factory = await ethers.getContractFactory('TestnetRewardRatePool');
+    const reward_pool         = await reward_pool_factory.attach(reward_pool_address);
+    console.log("Reward Pool: " + reward_pool_address);
+    console.log("  Reward Rate:     " + await reward_pool.rewardRate());
+    console.log("  Total Deposited: " + await reward_pool.calculateTotalDeposited());
+    console.log("  Total Released:  " + await reward_pool.calculateReleasedAmount());
+    console.log("  Beneficiary:     " + await reward_pool.beneficiary());
+
     const sn_rewards_factory = await ethers.getContractFactory('ServiceNodeRewards');
-    const sn_rewards         = await sn_rewards_factory.attach('0xEF43cd64528eA89966E251d4FE17c660222D2c9d');
+    const sn_rewards         = await sn_rewards_factory.attach(sn_rewards_address);
 
     const aggregate_pubkey = await sn_rewards.aggregatePubkey();
-    console.log("Total Nodes:                        " + await sn_rewards.totalNodes());
-    console.log("Next Service Node ID:               " + await sn_rewards.nextServiceNodeID());
-    console.log("BLS Non Signer Threshold:           " + await sn_rewards.blsNonSignerThreshold());
-    console.log("BLS Non Signer Threshold Max:       " + await sn_rewards.blsNonSignerThresholdMax());
-    console.log("Aggregate Pubkey:                   " + aggregate_pubkey[0].toString(16) + " " + aggregate_pubkey[1].toString(16));
-    console.log("Last Height Pubkey Aggregated:      " + await sn_rewards._lastHeightPubkeyWasAggregated());
-    console.log("Num Pubkey Aggregations For Height: " + await sn_rewards._numPubkeyAggregationsForHeight());
-    console.log("Removal Tag:                        " + await sn_rewards.removalTag());
-    console.log("Reward Tag:                         " + await sn_rewards.rewardTag());
+    console.log("Service Node Rewards:  " + sn_rewards_address);
+    console.log("  Total Nodes:                        " + await sn_rewards.totalNodes());
+    console.log("  Next Service Node ID:               " + await sn_rewards.nextServiceNodeID());
+    console.log("  BLS Non Signer Threshold:           " + await sn_rewards.blsNonSignerThreshold());
+    console.log("  BLS Non Signer Threshold Max:       " + await sn_rewards.blsNonSignerThresholdMax());
+    console.log("  Aggregate Pubkey:                   " + aggregate_pubkey[0].toString(16) + " " + aggregate_pubkey[1].toString(16));
+    console.log("  Last Height Pubkey Aggregated:      " + await sn_rewards._lastHeightPubkeyWasAggregated());
+    console.log("  Num Pubkey Aggregations For Height: " + await sn_rewards._numPubkeyAggregationsForHeight());
+    console.log("  Removal Tag:                        " + await sn_rewards.removalTag());
+    console.log("  Reward Tag:                         " + await sn_rewards.rewardTag());
 
     // NOTE: Print all the Session Node IDs via 'allServiceNodeIDs' into a JS structure
     const all_sn_ids       = await sn_rewards.allServiceNodeIDs(); // -> (sn_id[], (bls_x, bls_y)[])
