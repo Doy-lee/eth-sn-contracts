@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IServiceNodeContribution {
     // State-changing functions
-    function contributeOperatorFunds(uint256 amount, IServiceNodeRewards.BLSSignatureParams memory _blsSignature) external;
+    function contributeOperatorFunds(uint256 amount, IServiceNodeRewards.BLSSignatureParams memory _blsSignature, IServiceNodeRewards.Contributor[] memory _reservedContributors) external;
     function contributeFunds(uint256 amount) external;
-    function resetContract(uint256 amount) external;
+    function resetContract(uint256 amount, IServiceNodeRewards.Contributor[] memory reservedContributors) external;
     function updateServiceNodeParams(IServiceNodeRewards.ServiceNodeParams memory newParams) external;
     function updateBLSPubkey(BN256G1.G1Point memory newBlsPubkey) external;
     function rescueERC20(address tokenAddress) external;

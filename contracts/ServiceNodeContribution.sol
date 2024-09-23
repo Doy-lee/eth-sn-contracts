@@ -271,7 +271,6 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
      * for the given addresses.  Can be empty to leave contributor spots open to anyone.
      */
     function resetContract(uint256 amount, IServiceNodeRewards.Contributor[] memory reservedContributors) external onlyOperator {
-            
         require(finalized, "You cannot reset a contract that hasn't been finalised yet");
 
         // NOTE: Zero out all addresses in `contributions`
