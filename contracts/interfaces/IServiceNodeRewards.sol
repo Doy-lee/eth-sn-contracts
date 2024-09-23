@@ -31,7 +31,9 @@ interface IServiceNodeRewards {
     /// @notice Represents a recipient of rewards, how much they can claim and how much previously claimed.
     struct Recipient {
         uint256 rewards;
-        uint256 claimed;
+        uint256 stake;
+        uint256 claimedRewards;
+        uint256 claimedStake;
     }
 
     struct BLSSignatureParams {
@@ -60,7 +62,7 @@ interface IServiceNodeRewards {
     function poolShareOfLiquidationRatio() external view returns (uint256);
     function proofOfPossessionTag() external view returns (bytes32);
     function recipientRatio() external view returns (uint256);
-    function recipients(address) external view returns (uint256 rewards, uint256 claimed);
+    function recipients(address) external view returns (uint256 rewards, uint256 stake, uint256 claimedRewards, uint256 claimedStake);
     function removalTag() external view returns (bytes32);
     function rewardTag() external view returns (bytes32);
     function serviceNodes(uint64) external view returns (ServiceNode memory);
@@ -72,11 +74,13 @@ interface IServiceNodeRewards {
 
     // Function Signatures
     function updateRewardsBalance(
-        address recipientAddress,
-        uint256 recipientRewards,
-        BLSSignatureParams calldata blsSignature,
+        address addr,
+        uint256 rewards,
+        uint256 stake,
+        BLSSignatureParams calldata sig,
         uint64[] memory ids
     ) external;
+
     function claimRewards() external;
     function addBLSPublicKey(
         BN256G1.G1Point calldata blsPubkey,

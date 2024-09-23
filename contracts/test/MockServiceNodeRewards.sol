@@ -81,10 +81,16 @@ contract MockServiceNodeRewards is Ownable {
 
     function claimRewards() public {
         recipients[msg.sender].rewards += 50;
-        uint256 amount = recipients[msg.sender].rewards - recipients[msg.sender].claimed;
-        require(amount > 0, "No rewards to claim");
-        recipients[msg.sender].claimed += amount;
-        SafeERC20.safeTransfer(designatedToken, msg.sender, amount);
+        uint256 rewardsAmount = recipients[msg.sender].rewards - recipients[msg.sender].claimedRewards;
+        require(rewardsAmount > 0, "No rewards to claim");
+        recipients[msg.sender].claimedRewards += rewardsAmount;
+
+        recipients[msg.sender].stake += 50;
+        uint256 stakeAmount = recipients[msg.sender].stake - recipients[msg.sender].claimedStake;
+        require(stakeAmount > 0, "No stake to claim");
+        recipients[msg.sender].claimedStake += stakeAmount;
+
+        SafeERC20.safeTransfer(designatedToken, msg.sender, rewardsAmount + stakeAmount);
     }
 
     function serviceNodes(uint64 serviceNodeID) external view returns (IServiceNodeRewards.ServiceNode memory) {

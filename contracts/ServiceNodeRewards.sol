@@ -166,7 +166,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         ServiceNodeParams serviceNode,
         Contributor[] contributors
     );
-    event RewardsBalanceUpdated(address indexed recipientAddress, uint256 amount, uint256 previousBalance);
+    event RewardsBalanceUpdated(address indexed recipientAddress, uint256 rewards, uint256 prevRewards, uint256 stake, uint256 prevStake);
     event RewardsClaimed(address indexed recipientAddress, uint256 amount);
     event BLSNonSignerThresholdMaxUpdated(uint256 newMax);
     event ClaimThresholdUpdated(uint256 newThreshold);
@@ -220,14 +220,16 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     error LeaveRequestTooEarly(uint64 serviceNodeID, uint256 timestamp, uint256 currenttime);
     error LiquidatorRewardsTooLow();
     error MaxContributorsExceeded();
-    error MaxClaimExceeded();
+    error MaxRewardsClaimExceeded(uint256 maxAllowed);
+    error MaxStakeClaimExceeded(uint256 maxAllowed);
     error MaxPubkeyAggregationsExceeded();
     error NullBLSPubkey();
     error NullEd25519Pubkey();
     error NullAddress();
     error PositiveNumberRequirement();
     error RecipientAddressDoesNotMatch(address expectedRecipient, address providedRecipient, uint256 serviceNodeID);
-    error RecipientRewardsTooLow();
+    error RecipientRewardsTooLow(uint256 currRewards);
+    error RecipientStakeTooLow(uint256 currStake);
     error ServiceNodeDoesntExist(uint64 serviceNodeID);
     error SignatureExpired(uint64 serviceNodeID, uint256 timestamp, uint256 currenttime);
     error SmallContributorLeaveTooEarly(uint64 serviceNodeID, address contributor);
@@ -254,50 +256,63 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @notice Updates the rewards balance for a given recipient. Calling this
     /// requires a BLS signature from the network.
     ///
-    /// @param recipientAddress Address of the recipient to update.
-    /// @param recipientRewards Amount of rewards the recipient is allowed to
-    /// claim.
-    /// @param blsSignature 128 byte BLS proof of possession signature, signed
-    /// over the tag, `recipientAddress` and `recipientRewards`.
+    /// @dev The stakes are returned separately from the rewards that the
+    /// contributor has earnt to assist with book-keeping purposes of the pool
+    /// of funds that the contributor is receiving.
+    ///
+    /// @param addr Address of the recipient to update.
+    /// @param rewards The new total balance of rewards that the recipient has
+    /// received and is updating on the contract.
+    /// @param stake The new total balance of stakes that the recipient has
+    /// unlocked and is updating on the contract.
+    /// @param sig 128 byte BLS proof of possession signature, signed over the
+    /// tag, `recipientAddress` and `recipientRewards`.
     /// @param ids Array of service node IDs that didn't sign the signature
     /// and are to be excluded from verification.
     function updateRewardsBalance(
-        address recipientAddress,
-        uint256 recipientRewards,
-        BLSSignatureParams calldata blsSignature,
+        address addr,
+        uint256 rewards,
+        uint256 stake,
+        BLSSignatureParams calldata sig,
         uint64[] memory ids
     ) external whenNotPaused whenStarted hasEnoughSigners(ids.length) {
-        if (recipientAddress == address(0)) {
+        if (addr == address(0))
             revert NullAddress();
-        }
 
-        if (recipients[recipientAddress].rewards >= recipientRewards) {
-            revert RecipientRewardsTooLow();
-        }
+        Recipient storage recipient = recipients[addr];
+        if (recipient.rewards >= rewards)
+            revert RecipientRewardsTooLow(recipient.rewards);
+        if (recipient.stake >= stake)
+            revert RecipientStakeTooLow(recipient.stake);
 
         // NOTE: Validate signature
         {
-            bytes memory encodedMessage = abi.encodePacked(rewardTag, recipientAddress, recipientRewards);
-            BN256G2.G2Point memory Hm = BN256G2.hashToG2(encodedMessage, hashToG2Tag);
-            validateSignatureOrRevert(ids, blsSignature, Hm);
+            bytes memory encodedMessage = abi.encodePacked(rewardTag, addr, rewards);
+            BN256G2.G2Point memory Hm   = BN256G2.hashToG2(encodedMessage, hashToG2Tag);
+            validateSignatureOrRevert(ids, sig, Hm);
         }
 
-        uint256 previousBalance = recipients[recipientAddress].rewards;
-        recipients[recipientAddress].rewards = recipientRewards;
-        emit RewardsBalanceUpdated(recipientAddress, recipientRewards, previousBalance);
+        uint256 prevRewards = recipient.rewards;
+        uint256 prevStake   = recipient.stake;
+        recipient.rewards   = rewards;
+        recipient.stake     = stake;
+        emit RewardsBalanceUpdated(addr, rewards, prevRewards, stake, prevStake);
     }
 
     /// @dev Internal function to handle reward claims. Will transfer the
-    /// requested amount of our token to claimingAddress, up to the available rewards
-    /// @param claimingAddress The address claiming the rewards.
-    /// @param amount The amount of rewards to claim.
-    function _claimRewards(address claimingAddress, uint256 amount) internal {
-        // NOTE: Verify the claim amounts
-        uint256 claimedRewards = recipients[claimingAddress].claimed;
-        uint256 totalRewards = recipients[claimingAddress].rewards;
-        uint256 maxAmount = totalRewards - claimedRewards;
-        if (amount > maxAmount)
-            revert MaxClaimExceeded();
+    /// requested amount of our token to `addr`, up to the available rewards
+    ///
+    /// @param addr The address to claim rewards for.
+    /// @param rewards The amount of rewards to claim.
+    /// @param stake The amount of unlocked stake to claim.
+    function _claimRewards(address addr, uint256 rewards, uint256 stake) internal {
+
+        // NOTE: Verify the rewards amount
+        MaxClaims memory max = maxClaims(addr);
+        if (rewards > max.rewards)
+            revert MaxRewardsClaimExceeded(max.rewards);
+        if (stake > max.stake)
+            revert MaxStakeClaimExceeded(max.stake);
 
         // NOTE: Reset the total claims if we have entered a new cycle
         uint256 nextClaimCycle = block.timestamp / claimCycle;
@@ -307,27 +322,30 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         }
 
         // NOTE: Accumulate the claims for the current cycle
-        currentClaimTotal += amount;
-        if (currentClaimTotal > claimThreshold) revert ClaimThresholdExceeded();
+        currentClaimTotal += rewards + stake;
+        if (currentClaimTotal > claimThreshold)
+            revert ClaimThresholdExceeded();
 
         // NOTE: Allocate rewards
-        recipients[claimingAddress].claimed += amount;
-        emit RewardsClaimed(claimingAddress, amount);
-        SafeERC20.safeTransfer(designatedToken, claimingAddress, amount);
+        recipients[addr].claimedRewards += rewards;
+        recipients[addr].claimedStake   += stake;
+
+        emit RewardsClaimed(addr, rewards);
+        SafeERC20.safeTransfer(designatedToken, addr, rewards + stake);
     }
 
     /// @notice Claim all available rewards for the active wallet invoking the claim.
     function claimRewards() public {
-        uint256 claimedRewards = recipients[msg.sender].claimed;
-        uint256 totalRewards = recipients[msg.sender].rewards;
-        uint256 amountToRedeem = totalRewards - claimedRewards;
-        _claimRewards(msg.sender, amountToRedeem);
+        MaxClaims memory max = maxClaims(msg.sender);
+        _claimRewards(msg.sender, max.rewards, max.stake);
     }
 
-    /// @notice Claim a specific amount of rewards for the active wallet invoking the claim.
-    /// @param amount The amount of rewards to claim.
-    function claimRewards(uint256 amount) public {
-        _claimRewards(msg.sender, amount);
+    /// @notice Claim an explicit amount of rewards/stake for the active wallet
+    /// invoking the claim.
+    /// @param rewards The amount of rewards to claim.
+    /// @param stake The amount of unlocked stake to claim.
+    function claimRewards(uint256 rewards, uint256 stake) public {
+        _claimRewards(msg.sender, rewards, stake);
     }
 
     /// MANAGING BLS PUBLIC KEY LIST
@@ -925,6 +943,21 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     //                Non-state-changing functions              //
     //                                                          //
     //////////////////////////////////////////////////////////////
+
+    struct MaxClaims {
+        uint256 rewards;
+        uint256 stake;
+    }
+
+    function maxClaims(address addr) private view returns (MaxClaims memory result) {
+        uint256 claimedRewards = recipients[addr].claimedRewards;
+        uint256 totalRewards   = recipients[addr].rewards;
+        result.rewards         = totalRewards - claimedRewards;
+
+        uint256 claimedStake   = recipients[addr].claimedStake;
+        uint256 totalStake     = recipients[addr].stake;
+        result.stake           = totalStake - claimedStake;
+    }
 
     /// @notice Validate the signature against `hashToVerify` by negating the
     /// list of non-signers from the aggregate BLS public key stored on the
