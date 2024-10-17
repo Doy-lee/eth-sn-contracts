@@ -10,7 +10,12 @@ interface IServiceNodeRewards {
         address beneficiary; // Address rewards are paid out to
     }
 
-    struct Contributor {
+    struct ContributorV0 {
+        address addr;
+        uint256 stakedAmount; // Amount staked by the contributor
+    }
+
+    struct ContributorV1 {
         Staker staker;        // Address details for contributor
         uint256 stakedAmount; // Amount staked by the contributor
     }
@@ -23,11 +28,22 @@ interface IServiceNodeRewards {
     struct SeedServiceNode {
         BN256G1.G1Point blsPubkey;
         uint256         ed25519Pubkey;
-        Contributor[]   contributors;
+        ContributorV1[] contributors;
+    }
+
+    struct ServiceNodeV0 {
+        uint64          next;
+        uint64          prev;
+        address         operator;
+        BN256G1.G1Point pubkey;
+        uint256         addedTimestamp;
+        uint256         leaveRequestTimestamp;
+        uint256         deposit;
+        ContributorV0[] contributors;
     }
 
     /// @notice Represents a node in the network.
-    struct ServiceNode {
+    struct ServiceNodeV1 {
         uint64          next;
         uint64          prev;
         address         operator;
@@ -35,7 +51,7 @@ interface IServiceNodeRewards {
         uint256         addedTimestamp;
         uint256         leaveRequestTimestamp;
         uint256         deposit;
-        Contributor[]   contributors;
+        ContributorV1[] contributors;
         uint256         ed25519Pubkey;
     }
 
@@ -74,7 +90,7 @@ interface IServiceNodeRewards {
     function recipients(address) external view returns (uint256 rewards, uint256 claimed);
     function removalTag() external view returns (bytes32);
     function rewardTag() external view returns (bytes32);
-    function serviceNodes(uint64) external view returns (ServiceNode memory);
+    function serviceNodes(uint64) external view returns (ServiceNodeV1 memory);
     function serviceNodeIDs(bytes memory) external view returns (uint64);
     function allServiceNodeIDs() external view returns (uint64[] memory ids, BN256G1.G1Point[] memory pubkeys);
     function allServiceNodePubkeys() external view returns (BN256G1.G1Point[] memory pubkeys);
@@ -97,7 +113,7 @@ interface IServiceNodeRewards {
         BN256G1.G1Point memory blsPubkey,
         BLSSignatureParams memory blsSignature,
         ServiceNodeParams memory serviceNodeParams,
-        Contributor[] memory contributors
+        ContributorV1[] memory contributors
     ) external;
     function validateProofOfPossession(BN256G1.G1Point memory blsPubkey, BLSSignatureParams memory blsSignature, address caller, uint256 serviceNodePubkey) external;
     function initiateRemoveBLSPublicKey(uint64 serviceNodeID) external;
@@ -118,4 +134,5 @@ interface IServiceNodeRewards {
     function serviceNodesLength() external view returns (uint256 count);
     function updateServiceNodesLength() external;
     function start() external;
+
 }

@@ -99,11 +99,14 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
 
         _serviceNodes[LIST_SENTINEL].prev = LIST_SENTINEL;
         _serviceNodes[LIST_SENTINEL].next = LIST_SENTINEL;
+        _serviceNodesV1[LIST_SENTINEL].prev = LIST_SENTINEL;
+        _serviceNodesV1[LIST_SENTINEL].next = LIST_SENTINEL;
         __Ownable_init(msg.sender);
     }
 
-    mapping(uint64 => ServiceNode) private _serviceNodes;
-    mapping(address => Recipient) public recipients;
+    // TODO: Deprecated, to be removed on mainnet launch/stagenet re-launch
+    mapping(uint64  => ServiceNodeV0) internal _serviceNodes;
+    mapping(address => Recipient)     public recipients;
     // Maps a bls public key (G1Point) to a serviceNodeID
     mapping(bytes blsPubkey => uint64 serviceNodeID) public serviceNodeIDs;
 
@@ -149,18 +152,27 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     // permitted until the next cycle, e.g: `currentClaimCycle + 1`.
     uint256 public currentClaimCycle;
 
+    mapping(uint64 => ServiceNodeV1) internal _serviceNodesV1;
+
     // Tracks the node ID that is associated with the Ed25519 public key
     mapping(uint256 ed25519Pubkey => uint64 serviceNodeID) public ed25519ToServiceNodeID;
 
     // EVENTS
     event NewSeededServiceNode(uint64 indexed serviceNodeID, BN256G1.G1Point blsPubkey, uint256 ed25519Pubkey);
+    event NewServiceNode(
+        uint64 indexed serviceNodeID,
+        address initiator,
+        BN256G1.G1Point pubkey,
+        ServiceNodeParams serviceNode,
+        ContributorV0[] contributors
+    );
     event NewServiceNodeV2(
         uint8 version,
         uint64 indexed serviceNodeID,
         address initiator,
         BN256G1.G1Point pubkey,
         ServiceNodeParams serviceNode,
-        Contributor[] contributors
+        ContributorV1[] contributors
     );
     event RewardsBalanceUpdated(address indexed recipientAddress, uint256 amount, uint256 previousBalance);
     event RewardsClaimed(address indexed recipientAddress, uint256 amount);
@@ -359,7 +371,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         BN256G1.G1Point memory blsPubkey,
         BLSSignatureParams memory blsSignature,
         ServiceNodeParams memory serviceNodeParams,
-        Contributor[] memory contributors
+        ContributorV1[] memory contributors
     ) external whenNotPaused whenStarted {
         uint256 contributorsLength = contributors.length;
         if (contributorsLength > maxContributors)
@@ -373,8 +385,8 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             if (totalAmount != stakingRequirement)
                 revert ContributionTotalMismatch(stakingRequirement, totalAmount);
         } else {
-            contributors       = new Contributor[](1);
-            contributors[0]    = Contributor(Staker(/*addr*/ msg.sender, /*beneficiary*/ msg.sender), stakingRequirement);
+            contributors       = new ContributorV1[](1);
+            contributors[0]    = ContributorV1(Staker(/*addr*/ msg.sender, /*beneficiary*/ msg.sender), stakingRequirement);
             contributorsLength = contributors.length;
         }
 
@@ -408,16 +420,38 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         address operator = contributors[0].staker.addr;
         _validateProofOfPossession(blsPubkey, blsSignature, operator, serviceNodeParams.serviceNodePubkey);
 
-        (uint64 allocID, ServiceNode storage sn) = serviceNodeAdd(blsPubkey, serviceNodeParams.serviceNodePubkey);
-        sn.deposit                               = stakingRequirement;
-        sn.operator                              = operator;
+        (uint64 allocID, ServiceNodeV1 storage sn) = serviceNodeAdd(blsPubkey, serviceNodeParams.serviceNodePubkey);
+        sn.deposit                                 = stakingRequirement;
+        sn.operator                                = operator;
         for (uint256 i = 0; i < contributorsLength; ) {
             sn.contributors.push(contributors[i]);
             unchecked { i += 1; }
         }
 
         updateBLSNonSignerThreshold();
-        emit NewServiceNodeV2(0, allocID, operator, blsPubkey, serviceNodeParams, contributors);
+        if (true) {
+            // TODO: Temporary branch to down-convert upgraded contracts back to
+            // be backwards-compat with old daemons. We can get rid of this when
+            // we upgrade to the network to support beneficiaries.
+            ContributorV0[] memory contributorsV0 = new ContributorV0[](contributorsLength);
+            for (uint256 contribIndex = 0; contribIndex < contributorsLength; ) {
+                ContributorV1 memory v1 = contributors[contribIndex];
+                require(v1.staker.addr == v1.staker.beneficiary,
+                        "Contributor has custom beneficiary which is not supported yet");
+
+                // NOTE: Add v0 contributor
+                contributorsV0[contribIndex] = ContributorV0({
+                    addr:         v1.staker.addr,
+                    stakedAmount: v1.stakedAmount
+                });
+
+                unchecked { contribIndex++; }
+            }
+            emit NewServiceNode(allocID, operator, blsPubkey, serviceNodeParams, contributorsV0);
+        } else {
+            emit NewServiceNodeV2(0, allocID, operator, blsPubkey, serviceNodeParams, contributors);
+        }
+
         SafeERC20.safeTransferFrom(designatedToken, msg.sender, address(this), stakingRequirement);
     }
 
@@ -476,10 +510,10 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         bool isContributor         = false;
         bool isSmall               = false; // "small" means less than 25% of the SN total stake
 
-        ServiceNode storage sn     = _serviceNodes[serviceNodeID];
+        ServiceNodeV1 storage sn   = _serviceNodesV1[serviceNodeID];
         uint256 contributorsLength = sn.contributors.length;
         for (uint256 i = 0; i < contributorsLength; ) {
-            Contributor storage contributor = sn.contributors[i];
+            ContributorV1 storage contributor = sn.contributors[i];
             if (contributor.staker.addr == caller) {
                 isContributor = true;
                 isSmall       = (SMALL_CONTRIBUTOR_DIVISOR * contributor.stakedAmount) < sn.deposit;
@@ -527,7 +561,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         }
 
         if (
-            blsPubkey.X != _serviceNodes[serviceNodeID].blsPubkey.X || blsPubkey.Y != _serviceNodes[serviceNodeID].blsPubkey.Y
+            blsPubkey.X != _serviceNodesV1[serviceNodeID].blsPubkey.X || blsPubkey.Y != _serviceNodesV1[serviceNodeID].blsPubkey.Y
         ) revert BLSPubkeyDoesNotMatch(serviceNodeID, blsPubkey);
 
         // NOTE: Validate signature
@@ -537,7 +571,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             validateSignatureOrRevert(ids, blsSignature, Hm);
         }
 
-        _removeBLSPublicKey(serviceNodeID, _serviceNodes[serviceNodeID].deposit);
+        _removeBLSPublicKey(serviceNodeID, _serviceNodesV1[serviceNodeID].deposit);
     }
 
     /// @notice Removes a BLS public key after the required wait time on leave
@@ -548,7 +582,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     ///
     /// @param serviceNodeID The ID of the service node to be removed..
     function removeBLSPublicKeyAfterWaitTime(uint64 serviceNodeID) external whenNotPaused whenStarted {
-        uint256 leaveRequestTimestamp = _serviceNodes[serviceNodeID].leaveRequestTimestamp;
+        uint256 leaveRequestTimestamp = _serviceNodesV1[serviceNodeID].leaveRequestTimestamp;
         if (leaveRequestTimestamp == 0) {
             revert LeaveRequestTooEarly(serviceNodeID, leaveRequestTimestamp, block.timestamp);
         }
@@ -558,7 +592,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             revert LeaveRequestTooEarly(serviceNodeID, timestamp, block.timestamp);
         }
 
-        _removeBLSPublicKey(serviceNodeID, _serviceNodes[serviceNodeID].deposit);
+        _removeBLSPublicKey(serviceNodeID, _serviceNodesV1[serviceNodeID].deposit);
     }
 
     /// @dev Internal function to remove a service node from the contract. This
@@ -567,8 +601,8 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     ///
     /// @param serviceNodeID The ID of the service node to be removed.
     function _removeBLSPublicKey(uint64 serviceNodeID, uint256 returnedAmount) internal {
-        address operator = _serviceNodes[serviceNodeID].operator;
-        BN256G1.G1Point memory pubkey = _serviceNodes[serviceNodeID].blsPubkey;
+        address operator = _serviceNodesV1[serviceNodeID].operator;
+        BN256G1.G1Point memory pubkey = _serviceNodesV1[serviceNodeID].blsPubkey;
         serviceNodeDelete(serviceNodeID);
 
         updateBLSNonSignerThreshold();
@@ -603,7 +637,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             revert SignatureExpired(serviceNodeID, timestamp, block.timestamp);
         }
 
-        ServiceNode memory node = _serviceNodes[serviceNodeID];
+        ServiceNodeV1 memory node = _serviceNodesV1[serviceNodeID];
         if (blsPubkey.X != node.blsPubkey.X || blsPubkey.Y != node.blsPubkey.Y) {
             revert BLSPubkeyDoesNotMatch(serviceNodeID, blsPubkey);
         }
@@ -664,15 +698,15 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
                 revert MaxContributorsExceeded();
 
             // NOTE: Add node to the smart contract
-            (uint64 allocID, ServiceNode storage sn) = serviceNodeAdd(node.blsPubkey, node.ed25519Pubkey);
-            sn.deposit                               = stakingRequirement;
-            sn.operator                              = node.contributors[0].staker.addr;
+            (uint64 allocID, ServiceNodeV1 storage sn) = serviceNodeAdd(node.blsPubkey, node.ed25519Pubkey);
+            sn.deposit                                 = stakingRequirement;
+            sn.operator                                = node.contributors[0].staker.addr;
 
             uint256 stakedAmountSum        = 0;
             uint256 nodeContributorsLength = node.contributors.length;
             for (uint256 contribIndex = 0; contribIndex < nodeContributorsLength; ) {
-                Contributor calldata contributor  = node.contributors[contribIndex];
-                stakedAmountSum                  += contributor.stakedAmount;
+                ContributorV1 calldata contributor  = node.contributors[contribIndex];
+                stakedAmountSum                    += contributor.stakedAmount;
                 if (contributor.staker.addr == address(0))
                     revert NullAddress();
                 sn.contributors.push(contributor);
@@ -694,7 +728,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     ///
     /// @return id The ID allocated for the service node and a pointer to its storage (equivalent to
     /// `_serviceNodes[id]`).
-    function serviceNodeAdd(BN256G1.G1Point memory blsPubkey, uint256 ed25519Pubkey) internal returns (uint64 id, ServiceNode storage sn) {
+    function serviceNodeAdd(BN256G1.G1Point memory blsPubkey, uint256 ed25519Pubkey) internal returns (uint64 id, ServiceNodeV1 storage sn) {
         // NOTE: Check keys
         if (blsPubkey.X == 0 || blsPubkey.Y == 0)
             revert NullBLSPubkey();
@@ -742,14 +776,14 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         // node->next->prev = node;
         // node->prev->next = node;
         // ```
-        sn                           = _serviceNodes[id];
-        ServiceNode storage sentinel = _serviceNodes[LIST_SENTINEL];
+        sn                             = _serviceNodesV1[id];
+        ServiceNodeV1 storage sentinel = _serviceNodesV1[LIST_SENTINEL];
 
         uint64 prev                  = sentinel.prev;
         sn.next                      = LIST_SENTINEL; // node->next       = sentinel
         sn.prev                      = prev;          // node->prev       = sentinel->prev
         sentinel.prev                = id;            // node->next->prev = node
-        _serviceNodes[prev].next     = id;            // node->prev->next = node
+        _serviceNodesV1[prev].next   = id;            // node->prev->next = node
 
         // NOTE: Assign node info
         sn.blsPubkey                 = blsPubkey;
@@ -778,7 +812,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             revert InsufficientNodes();
         if (nodeID == LIST_SENTINEL) revert DeleteSentinelNodeNotAllowed();
 
-        ServiceNode memory node = _serviceNodes[nodeID];
+        ServiceNodeV1 memory node = _serviceNodesV1[nodeID];
 
         // The following is the deletion pattern in a doubly-linked list
         // with sentinel at index 0
@@ -787,8 +821,8 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         // node->next->prev = node->prev;
         // node->prev->next = node->next;
         // ```
-        _serviceNodes[node.next].prev = node.prev;
-        _serviceNodes[node.prev].next = node.next;
+        _serviceNodesV1[node.next].prev = node.prev;
+        _serviceNodesV1[node.prev].next = node.next;
 
         // NOTE: Update aggregate BLS key
         _aggregatePubkey = BN256G1.add(_aggregatePubkey, BN256G1.negate(node.blsPubkey));
@@ -801,7 +835,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         delete serviceNodeIDs[blsPubkeyBytes];
 
         // NOTE: Delete node from EVM storage
-        delete _serviceNodes[nodeID];
+        delete _serviceNodesV1[nodeID];
 
         totalNodes -= 1;
     }
@@ -821,9 +855,9 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     // @notice Publically allow anyone to recalculate the aggregate public key
     // in the smart contract
     function updateAggregatePubkey() public {
-        uint64 currentNode = _serviceNodes[LIST_SENTINEL].next;
+        uint64 currentNode = _serviceNodesV1[LIST_SENTINEL].next;
         for (uint64 i = 0; currentNode != LIST_SENTINEL; ) {
-            ServiceNode storage sn = _serviceNodes[currentNode];
+            ServiceNodeV1 storage sn = _serviceNodesV1[currentNode];
             if (i == 0) {
                 _aggregatePubkey = sn.blsPubkey;
             } else {
@@ -948,7 +982,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         uint256 listOfNonSignersLength = listOfNonSigners.length;
         for (uint256 i = 0; i < listOfNonSignersLength; ) {
             uint64 serviceNodeID = listOfNonSigners[i];
-            blsPubkey = BN256G1.add(blsPubkey, _serviceNodes[serviceNodeID].blsPubkey);
+            blsPubkey = BN256G1.add(blsPubkey, _serviceNodesV1[serviceNodeID].blsPubkey);
             unchecked { i += 1; }
         }
 
@@ -975,12 +1009,12 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @notice Counts the number of service nodes in the linked list.
     /// @return count The total number of service nodes in the list.
     function serviceNodesLength() public view returns (uint256 count) {
-        uint64 currentNode = _serviceNodes[LIST_SENTINEL].next;
+        uint64 currentNode = _serviceNodesV1[LIST_SENTINEL].next;
         count = 0;
 
         while (currentNode != LIST_SENTINEL) {
             count++;
-            currentNode = _serviceNodes[currentNode].next;
+            currentNode = _serviceNodesV1[currentNode].next;
         }
 
         return count;
@@ -1005,8 +1039,8 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @notice Getter for a single service node given their service node ID
     /// @param serviceNodeID the unique identifier of the service node
     /// @return Service Node Struct from the linked list of all nodes
-    function serviceNodes(uint64 serviceNodeID) external view returns (ServiceNode memory) {
-        return _serviceNodes[serviceNodeID];
+    function serviceNodes(uint64 serviceNodeID) external view returns (ServiceNodeV1 memory) {
+        return _serviceNodesV1[serviceNodeID];
     }
 
     /// @notice Getter function for the aggregatePubkey
@@ -1020,9 +1054,9 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         ids = new uint64[](totalNodes);
         pubkeys = new BN256G1.G1Point[](totalNodes);
 
-        uint64 currentNode = _serviceNodes[LIST_SENTINEL].next;
+        uint64 currentNode = _serviceNodesV1[LIST_SENTINEL].next;
         for (uint64 i = 0; currentNode != LIST_SENTINEL; ) {
-            ServiceNode storage sn = _serviceNodes[currentNode];
+            ServiceNodeV1 storage sn = _serviceNodesV1[currentNode];
             ids[i]                 = currentNode;
             pubkeys[i]             = sn.blsPubkey;
             currentNode            = sn.next;
@@ -1037,11 +1071,11 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     function allServiceNodePubkeys() external view returns (BN256G1.G1Point[] memory pubkeys) {
         pubkeys = new BN256G1.G1Point[](totalNodes);
 
-        uint64 currentNode = _serviceNodes[LIST_SENTINEL].next;
+        uint64 currentNode = _serviceNodesV1[LIST_SENTINEL].next;
         for (uint64 i = 0; currentNode != LIST_SENTINEL; ) {
-            ServiceNode storage sn = _serviceNodes[currentNode];
-            pubkeys[i]             = sn.blsPubkey;
-            currentNode            = sn.next;
+            ServiceNodeV1 storage sn = _serviceNodesV1[currentNode];
+            pubkeys[i]               = sn.blsPubkey;
+            currentNode              = sn.next;
             unchecked { i += 1; }
         }
 

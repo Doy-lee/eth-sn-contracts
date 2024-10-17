@@ -342,11 +342,11 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
         status = Status.Finalized;
         emit Finalized(_serviceNodeParams.serviceNodePubkey);
 
-        uint256 length                                        = _contributorAddresses.length;
-        IServiceNodeRewards.Contributor[] memory contributors = new IServiceNodeRewards.Contributor[](length);
+        uint256 length                                          = _contributorAddresses.length;
+        IServiceNodeRewards.ContributorV1[] memory contributors = new IServiceNodeRewards.ContributorV1[](length);
         for (uint256 i = 0; i < length; ) {
             IServiceNodeRewards.Staker storage entry = _contributorAddresses[i];
-            contributors[i]                          = IServiceNodeRewards.Contributor(entry, contributions[entry.addr]);
+            contributors[i]                          = IServiceNodeRewards.ContributorV1(entry, contributions[entry.addr]);
             unchecked { i += 1; }
         }
 

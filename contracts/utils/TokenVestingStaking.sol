@@ -134,11 +134,11 @@ contract TokenVestingStaking is ITokenVestingStaking, Shared {
         address snBeneficiary
     ) external onlyRevokerIfRevokedElseBeneficiary afterStart nzAddr(snBeneficiary) {
         // NOTE: Configure custom beneficiary for investor
-        uint256 stakingRequirement                            = rewardsContract.stakingRequirement();
-        IServiceNodeRewards.Contributor[] memory contributors = new IServiceNodeRewards.Contributor[](1);
-        contributors[0] = IServiceNodeRewards.Contributor(IServiceNodeRewards.Staker(/*addr*/ address(this),
-                                                                                     /*beneficiary*/ snBeneficiary),
-                                                                                     stakingRequirement);
+        uint256 stakingRequirement                              = rewardsContract.stakingRequirement();
+        IServiceNodeRewards.ContributorV1[] memory contributors = new IServiceNodeRewards.ContributorV1[](1);
+        contributors[0] = IServiceNodeRewards.ContributorV1(IServiceNodeRewards.Staker(/*addr*/ address(this),
+                                                                                       /*beneficiary*/ snBeneficiary),
+                                                                                       stakingRequirement);
 
         // NOTE: Allow staking requirement to be transferred
         SENT.approve(address(rewardsContract), stakingRequirement);

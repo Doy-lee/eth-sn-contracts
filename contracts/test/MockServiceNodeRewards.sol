@@ -22,7 +22,7 @@ contract MockServiceNodeRewards is Ownable {
     uint256 private constant _maxContributors = 10;
     uint256 public immutable stakingRequirement;
 
-    mapping(uint64 => IServiceNodeRewards.ServiceNode) _serviceNodes;
+    mapping(uint64 => IServiceNodeRewards.ServiceNodeV1) _serviceNodes;
     mapping(address => IServiceNodeRewards.Recipient) public recipients;
 
     constructor(address _token, uint256 _stakingRequirement) Ownable(msg.sender) {
@@ -46,7 +46,7 @@ contract MockServiceNodeRewards is Ownable {
         BN256G1.G1Point calldata pubkey,
         IServiceNodeRewards.BLSSignatureParams calldata,
         IServiceNodeRewards.ServiceNodeParams calldata,
-        IServiceNodeRewards.Contributor[] calldata contributors
+        IServiceNodeRewards.ContributorV1[] calldata contributors
     ) public {
         _serviceNodes[nextServiceNodeID].operator = msg.sender;
         _serviceNodes[nextServiceNodeID].deposit = stakingRequirement;
@@ -61,7 +61,7 @@ contract MockServiceNodeRewards is Ownable {
         }
         if (contributorsLength == 0) {
             _serviceNodes[nextServiceNodeID].contributors.push(
-                IServiceNodeRewards.Contributor(IServiceNodeRewards.Staker(msg.sender, msg.sender), stakingRequirement)
+                IServiceNodeRewards.ContributorV1(IServiceNodeRewards.Staker(msg.sender, msg.sender), stakingRequirement)
             );
         }
 
@@ -93,7 +93,7 @@ contract MockServiceNodeRewards is Ownable {
         SafeERC20.safeTransfer(designatedToken, msg.sender, amount);
     }
 
-    function serviceNodes(uint64 serviceNodeID) external view returns (IServiceNodeRewards.ServiceNode memory) {
+    function serviceNodes(uint64 serviceNodeID) external view returns (IServiceNodeRewards.ServiceNodeV1 memory) {
         return _serviceNodes[serviceNodeID];
     }
 }

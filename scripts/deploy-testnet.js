@@ -42,7 +42,9 @@ async function main() {
     await serviceNodeRewards.waitForDeployment();
 
     snContributionContractFactory = await ethers.getContractFactory("ServiceNodeContributionFactory");
-    snContributionFactory = await snContributionContractFactory.deploy(serviceNodeRewards);
+    snContributionFactory         = await upgrades.deployProxy(snContributionContractFactory, [
+        await serviceNodeRewards.getAddress()
+    ]);
 
     await snContributionFactory.waitForDeployment();
 
