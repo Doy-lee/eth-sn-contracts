@@ -102,6 +102,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         _serviceNodesV1[LIST_SENTINEL].prev = LIST_SENTINEL;
         _serviceNodesV1[LIST_SENTINEL].next = LIST_SENTINEL;
         __Ownable_init(msg.sender);
+        __Pausable_init();
     }
 
     // TODO: Deprecated, to be removed on mainnet launch/stagenet re-launch
