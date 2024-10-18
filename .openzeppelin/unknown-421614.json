@@ -127,7 +127,7 @@
             "src": "contracts/ServiceNodeRewards-25b9ebaac5998ba1f6be0665b5e2747763532979.sol:42"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -135,7 +135,7 @@
             "src": "contracts/ServiceNodeRewards-25b9ebaac5998ba1f6be0665b5e2747763532979.sol:44"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -143,7 +143,7 @@
             "src": "contracts/ServiceNodeRewards-25b9ebaac5998ba1f6be0665b5e2747763532979.sol:45"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -151,7 +151,7 @@
             "src": "contracts/ServiceNodeRewards-25b9ebaac5998ba1f6be0665b5e2747763532979.sol:46"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -159,7 +159,7 @@
             "src": "contracts/ServiceNodeRewards-25b9ebaac5998ba1f6be0665b5e2747763532979.sol:47"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -199,7 +199,7 @@
             "src": "contracts/ServiceNodeRewards-25b9ebaac5998ba1f6be0665b5e2747763532979.sol:104"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -207,7 +207,7 @@
             "src": "contracts/ServiceNodeRewards-25b9ebaac5998ba1f6be0665b5e2747763532979.sol:105"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -589,7 +589,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -597,7 +597,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -605,7 +605,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -613,7 +613,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -621,7 +621,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -661,7 +661,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -669,7 +669,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -1051,7 +1051,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -1059,7 +1059,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -1067,7 +1067,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -1075,7 +1075,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -1083,7 +1083,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -1123,7 +1123,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -1131,7 +1131,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -1513,7 +1513,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -1521,7 +1521,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -1529,7 +1529,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -1537,7 +1537,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -1545,7 +1545,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -1585,7 +1585,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -1593,7 +1593,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -1975,7 +1975,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -1983,7 +1983,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -1991,7 +1991,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -1999,7 +1999,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -2007,7 +2007,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -2047,7 +2047,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -2055,7 +2055,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -2437,7 +2437,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -2445,7 +2445,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -2453,7 +2453,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -2461,7 +2461,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -2469,7 +2469,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -2509,7 +2509,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -2517,7 +2517,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -2899,7 +2899,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -2907,7 +2907,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -2915,7 +2915,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -2923,7 +2923,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -2931,7 +2931,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -2971,7 +2971,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -2979,7 +2979,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -3361,7 +3361,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -3369,7 +3369,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -3377,7 +3377,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -3385,7 +3385,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -3393,7 +3393,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -3433,7 +3433,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -3441,7 +3441,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -3823,7 +3823,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -3831,7 +3831,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -3839,7 +3839,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -3847,7 +3847,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -3855,7 +3855,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -3895,7 +3895,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -3903,7 +3903,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -4285,7 +4285,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -4293,7 +4293,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -4301,7 +4301,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -4309,7 +4309,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -4317,7 +4317,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -4357,7 +4357,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -4365,7 +4365,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -4747,7 +4747,7 @@
             "src": "contracts/ServiceNodeRewards.sol:43"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -4755,7 +4755,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -4763,7 +4763,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -4771,7 +4771,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -4779,7 +4779,7 @@
             "src": "contracts/ServiceNodeRewards.sol:48"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -4819,7 +4819,7 @@
             "src": "contracts/ServiceNodeRewards.sol:105"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -4827,7 +4827,7 @@
             "src": "contracts/ServiceNodeRewards.sol:106"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -5354,7 +5354,7 @@
             "src": "contracts/ServiceNodeRewards.sol:42"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -5362,7 +5362,7 @@
             "src": "contracts/ServiceNodeRewards.sol:44"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -5370,7 +5370,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -5378,7 +5378,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -5386,7 +5386,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -5426,7 +5426,7 @@
             "src": "contracts/ServiceNodeRewards.sol:109"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -5434,7 +5434,7 @@
             "src": "contracts/ServiceNodeRewards.sol:110"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -5848,7 +5848,7 @@
             "src": "contracts/ServiceNodeRewards.sol:42"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -5856,7 +5856,7 @@
             "src": "contracts/ServiceNodeRewards.sol:44"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -5864,7 +5864,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -5872,7 +5872,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -5880,7 +5880,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -5920,7 +5920,7 @@
             "src": "contracts/ServiceNodeRewards.sol:110"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -5928,7 +5928,7 @@
             "src": "contracts/ServiceNodeRewards.sol:111"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -6342,7 +6342,7 @@
             "src": "contracts/ServiceNodeRewards.sol:42"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -6350,7 +6350,7 @@
             "src": "contracts/ServiceNodeRewards.sol:44"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -6358,7 +6358,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -6366,7 +6366,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -6374,7 +6374,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -6414,7 +6414,7 @@
             "src": "contracts/ServiceNodeRewards.sol:110"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -6422,7 +6422,7 @@
             "src": "contracts/ServiceNodeRewards.sol:111"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
@@ -6836,7 +6836,7 @@
             "src": "contracts/ServiceNodeRewards.sol:42"
           },
           {
-            "label": "_stakingRequirement",
+            "label": "stakingRequirement",
             "offset": 0,
             "slot": "11",
             "type": "t_uint256",
@@ -6844,7 +6844,7 @@
             "src": "contracts/ServiceNodeRewards.sol:44"
           },
           {
-            "label": "_maxContributors",
+            "label": "maxContributors",
             "offset": 0,
             "slot": "12",
             "type": "t_uint256",
@@ -6852,7 +6852,7 @@
             "src": "contracts/ServiceNodeRewards.sol:45"
           },
           {
-            "label": "_liquidatorRewardRatio",
+            "label": "liquidatorRewardRatio",
             "offset": 0,
             "slot": "13",
             "type": "t_uint256",
@@ -6860,7 +6860,7 @@
             "src": "contracts/ServiceNodeRewards.sol:46"
           },
           {
-            "label": "_poolShareOfLiquidationRatio",
+            "label": "poolShareOfLiquidationRatio",
             "offset": 0,
             "slot": "14",
             "type": "t_uint256",
@@ -6868,7 +6868,7 @@
             "src": "contracts/ServiceNodeRewards.sol:47"
           },
           {
-            "label": "_recipientRatio",
+            "label": "recipientRatio",
             "offset": 0,
             "slot": "15",
             "type": "t_uint256",
@@ -6908,7 +6908,7 @@
             "src": "contracts/ServiceNodeRewards.sol:110"
           },
           {
-            "label": "_lastHeightPubkeyWasAggregated",
+            "label": "lastHeightPubkeyWasAggregated",
             "offset": 0,
             "slot": "21",
             "type": "t_uint256",
@@ -6916,7 +6916,7 @@
             "src": "contracts/ServiceNodeRewards.sol:111"
           },
           {
-            "label": "_numPubkeyAggregationsForHeight",
+            "label": "numPubkeyAggregationsForHeight",
             "offset": 0,
             "slot": "22",
             "type": "t_uint256",
