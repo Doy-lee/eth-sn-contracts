@@ -136,7 +136,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     REQUIRE(success_resetting_to_snapshot);
 
     // Check rewards contract is responding and set to zero
-    REQUIRE(rewards_contract.serviceNodesLength() == 0);
+    REQUIRE(rewards_contract.totalNodes() == 0);
     REQUIRE(contract_address != "");
 
     // Approve our contract and make sure it was successful
@@ -151,7 +151,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     REQUIRE(hash != "");
     REQUIRE(defaultProvider.transactionSuccessful(hash));
     SECTION( "Add a public key to the smart contract" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
 
         ServiceNodeList snl(1);
         for(auto& node : snl.nodes) {
@@ -162,14 +162,14 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             REQUIRE(hash != "");
             REQUIRE(defaultProvider.transactionSuccessful(hash));
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 1);
+        REQUIRE(rewards_contract.totalNodes() == 1);
 
         verifyEVMServiceNodesAgainstCPPState(snl);
         resetContractToSnapshot();
     }
 
     SECTION( "Add several public keys to the smart contract and check aggregate pubkey" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(2);
         for(auto& node : snl.nodes) {
             const auto pubkey              = node.getPublicKeyHex();
@@ -179,7 +179,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             REQUIRE(hash != "");
             REQUIRE(defaultProvider.transactionSuccessful(hash));
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 2);
+        REQUIRE(rewards_contract.totalNodes() == 2);
         REQUIRE(rewards_contract.aggregatePubkeyString() == "0x" + snl.aggregatePubkeyHex());
 
         verifyEVMServiceNodesAgainstCPPState(snl);
@@ -187,7 +187,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and liquidate one of them with everyone signing (including the liquidated node)" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -195,7 +195,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         const uint64_t service_node_to_remove = snl.randomServiceNodeID();
         const auto signers = snl.randomSigners(snl.nodes.size());
         const auto [pubkey, timestamp, sig] = snl.liquidateNodeFromIndices(service_node_to_remove, config.CHAIN_ID, contract_address, signers);
@@ -204,7 +204,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         hash = signer.sendTransaction(tx, seckey);
         REQUIRE(hash != "");
         REQUIRE(defaultProvider.transactionSuccessful(hash));
-        REQUIRE(rewards_contract.serviceNodesLength() == 2);
+        REQUIRE(rewards_contract.totalNodes() == 2);
         snl.deleteNode(service_node_to_remove);
         REQUIRE(rewards_contract.aggregatePubkeyString() == "0x" + snl.aggregatePubkeyHex());
 
@@ -213,7 +213,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and liquidate one of them with a single non signer" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -221,7 +221,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         const uint64_t service_node_to_remove = snl.randomServiceNodeID();
         const auto signers = snl.randomSigners(snl.nodes.size() - 1);
         const auto [pubkey, timestamp, sig] = snl.liquidateNodeFromIndices(service_node_to_remove, config.CHAIN_ID, contract_address, signers);
@@ -230,7 +230,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         hash = signer.sendTransaction(tx, seckey);
         REQUIRE(hash != "");
         REQUIRE(defaultProvider.transactionSuccessful(hash));
-        REQUIRE(rewards_contract.serviceNodesLength() == 2);
+        REQUIRE(rewards_contract.totalNodes() == 2);
         snl.deleteNode(service_node_to_remove);
         REQUIRE(rewards_contract.aggregatePubkeyString() == "0x" + snl.aggregatePubkeyHex());
 
@@ -239,7 +239,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and try liquidate one of them with a not enough signers" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -247,14 +247,14 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         const uint64_t service_node_to_remove = snl.randomServiceNodeID();
         const auto signers = snl.randomSigners(snl.nodes.size() - 2);
         const auto [pubkey, timestamp, sig] = snl.liquidateNodeFromIndices(service_node_to_remove, config.CHAIN_ID, contract_address, signers);
         const auto non_signers = snl.findNonSigners(signers);
         tx = rewards_contract.liquidateBLSPublicKeyWithSignature(pubkey, timestamp, sig, non_signers);
         REQUIRE_THROWS(signer.sendTransaction(tx, seckey));
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         REQUIRE(rewards_contract.aggregatePubkeyString() == "0x" + snl.aggregatePubkeyHex());
 
         verifyEVMServiceNodesAgainstCPPState(snl);
@@ -262,7 +262,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Initiate remove public key with correct signer" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -275,14 +275,14 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         hash = signer.sendTransaction(tx, seckey);
         REQUIRE(hash != "");
         REQUIRE(defaultProvider.transactionSuccessful(hash));
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
 
         verifyEVMServiceNodesAgainstCPPState(snl);
         resetContractToSnapshot();
     }
 
     SECTION( "Initiate remove public key with incorrect signer" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -294,14 +294,14 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         tx = rewards_contract.initiateRemoveBLSPublicKey(service_node_to_remove);
         std::vector<unsigned char> badseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         REQUIRE_THROWS(signer.sendTransaction(tx, badseckey));
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
 
         verifyEVMServiceNodesAgainstCPPState(snl);
         resetContractToSnapshot();
     }
 
     SECTION( "Remove public key after wait time should fail if node hasn't initiated removal" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -312,14 +312,14 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         const uint64_t service_node_to_remove = snl.randomServiceNodeID();
         tx = rewards_contract.removeBLSPublicKeyAfterWaitTime(service_node_to_remove);
         REQUIRE_THROWS(signer.sendTransaction(tx, seckey));
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
 
         verifyEVMServiceNodesAgainstCPPState(snl);
         resetContractToSnapshot();
     }
 
     SECTION( "Remove public key after wait time should fail if not enough time has passed since node initiated removal" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -334,14 +334,14 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         REQUIRE(defaultProvider.transactionSuccessful(hash));
         tx = rewards_contract.removeBLSPublicKeyAfterWaitTime(service_node_to_remove);
         REQUIRE_THROWS(signer.sendTransaction(tx, seckey));
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
 
         verifyEVMServiceNodesAgainstCPPState(snl);
         resetContractToSnapshot();
     }
 
     SECTION( "Remove public key after wait time should succeed if enough time has passed since node initiated removal" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -360,7 +360,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         hash = signer.sendTransaction(tx, seckey);
         REQUIRE(hash != "");
         REQUIRE(defaultProvider.transactionSuccessful(hash));
-        REQUIRE(rewards_contract.serviceNodesLength() == 2);
+        REQUIRE(rewards_contract.totalNodes() == 2);
         snl.deleteNode(service_node_to_remove);
         REQUIRE(rewards_contract.aggregatePubkeyString() == "0x" + snl.aggregatePubkeyHex());
 
@@ -369,7 +369,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and remove one of them with a single non signer" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -377,7 +377,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         const uint64_t service_node_to_remove = snl.randomServiceNodeID();
         const auto signers = snl.randomSigners(snl.nodes.size() - 1);
         const auto [pubkey, timestamp, sig] = snl.removeNodeFromIndices(service_node_to_remove, config.CHAIN_ID, contract_address, signers);
@@ -386,7 +386,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
         hash = signer.sendTransaction(tx, seckey);
         REQUIRE(hash != "");
         REQUIRE(defaultProvider.transactionSuccessful(hash));
-        REQUIRE(rewards_contract.serviceNodesLength() == 2);
+        REQUIRE(rewards_contract.totalNodes() == 2);
         snl.deleteNode(service_node_to_remove);
         REQUIRE(rewards_contract.aggregatePubkeyString() == "0x" + snl.aggregatePubkeyHex());
 
@@ -395,7 +395,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and try remove one of them not enough signers" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -403,14 +403,14 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         const uint64_t service_node_to_remove = snl.randomServiceNodeID();
         const auto signers = snl.randomSigners(snl.nodes.size() - 2);
         const auto [pubkey, timestamp, sig] = snl.removeNodeFromIndices(service_node_to_remove, config.CHAIN_ID, contract_address, signers);
         const auto non_signers = snl.findNonSigners(signers);
         tx = rewards_contract.removeBLSPublicKeyWithSignature(pubkey, timestamp, sig, non_signers);
         REQUIRE_THROWS(signer.sendTransaction(tx, seckey));
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         REQUIRE(rewards_contract.aggregatePubkeyString() == "0x" + snl.aggregatePubkeyHex());
 
         verifyEVMServiceNodesAgainstCPPState(snl);
@@ -418,7 +418,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and update the rewards of one of them" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -426,7 +426,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         auto recipient = rewards_contract.viewRecipientData(senderAddress);
         REQUIRE(recipient.rewards == 0);
         REQUIRE(recipient.claimed == 0);
@@ -447,7 +447,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and update the rewards without enough signers and expect fail" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -455,7 +455,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         auto recipient = rewards_contract.viewRecipientData(senderAddress);
         REQUIRE(recipient.rewards == 0);
         REQUIRE(recipient.claimed == 0);
@@ -471,7 +471,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Add several public keys to the smart contract and update the rewards of one of them and successfully claim the rewards" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -479,7 +479,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 1;
@@ -508,7 +508,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Successfully claim the rewards specifying the exact amount" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -516,7 +516,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 1;
@@ -545,7 +545,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Successfully claim the rewards specifying a lower amount then maximum" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -553,7 +553,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 2;
@@ -583,7 +583,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Fail to claim the rewards specifying a higher amount then maximum" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -591,7 +591,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 2;
@@ -612,7 +612,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Claim too many rewards in a single transaction and trigger rate limiter" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -620,7 +620,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 3000000000000000;
@@ -640,7 +640,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Claim too much rewards but over the waiting time should succeed" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -648,7 +648,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 500000000000000;
@@ -691,7 +691,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
     }
 
     SECTION( "Claim too much rewards over two transactions and trigger rate limiter" ) {
-        REQUIRE(rewards_contract.serviceNodesLength() == 0);
+        REQUIRE(rewards_contract.totalNodes() == 0);
         ServiceNodeList snl(3);
         for(auto& node : snl.nodes) {
             const auto pubkey = node.getPublicKeyHex();
@@ -699,7 +699,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 3);
+        REQUIRE(rewards_contract.totalNodes() == 3);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 500000000000000;
@@ -747,7 +747,7 @@ TEST_CASE( "Rewards Contract", "[ethereum]" ) {
             tx = rewards_contract.addBLSPublicKey(pubkey, proof_of_possession, "pubkey" + std::to_string(node.service_node_id), "sig", 0);
             signer.sendTransaction(tx, seckey);
         }
-        REQUIRE(rewards_contract.serviceNodesLength() == 2000);
+        REQUIRE(rewards_contract.totalNodes() == 2000);
         std::vector<unsigned char> secondseckey = ethyl::utils::fromHexString(std::string(config.ADDITIONAL_PRIVATE_KEY1));
         const std::string recipientAddress = signer.secretKeyToAddressString(secondseckey);
         const uint64_t recipientAmount = 1;

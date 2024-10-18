@@ -79,7 +79,7 @@ describe("ServiceNodeRewards Contract Tests", function () {
             ];
 
             await serviceNodeRewards.connect(owner).seedPublicKeyList(seedData);
-            expect(await serviceNodeRewards.serviceNodesLength()).to.equal(1);
+            expect(await serviceNodeRewards.totalNodes()).to.equal(1);
             let aggregate_pubkey = await serviceNodeRewards.aggregatePubkey();
             expect(aggregate_pubkey[0]).to.equal(seedData[0].blsPubkey.X)
             expect(aggregate_pubkey[1]).to.equal(seedData[0].blsPubkey.Y)
@@ -134,13 +134,13 @@ describe("ServiceNodeRewards Contract Tests", function () {
 
             // NOTE: We know that the sentinel node is reserved at the 0th ID.
             // Hence the 2 service nodes we added are at ID 1 and 2.
-            expect(await serviceNodeRewards.serviceNodesLength()).to.equal(2);
+            expect(await serviceNodeRewards.totalNodes()).to.equal(2);
 
             verifySeedData(await serviceNodeRewards.serviceNodes(1), seedData[0]);
             verifySeedData(await serviceNodeRewards.serviceNodes(2), seedData[1]);
 
             // NOTE: Recalculate the aggregate pubkey
-            await serviceNodeRewards.updateAggregatePubkey();
+            await serviceNodeRewards.rederiveTotalNodesAndAggregatePubkey();
             let recalc_aggregate_pubkey = await serviceNodeRewards.aggregatePubkey();
             expect(recalc_aggregate_pubkey).to.deep.equal(expected_aggregate_pubkey);
         });
@@ -432,7 +432,7 @@ describe("ServiceNodeRewards Contract Tests", function () {
             }
 
             await serviceNodeRewards.connect(owner).seedPublicKeyList(seedData);
-            expect(await serviceNodeRewards.serviceNodesLength()).to.equal(1);
+            expect(await serviceNodeRewards.totalNodes()).to.equal(1);
             verifySeedData(await serviceNodeRewards.serviceNodes(1), seedData[0]);
         });
 
