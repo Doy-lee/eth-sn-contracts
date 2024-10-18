@@ -10,7 +10,7 @@ interface IServiceNodeRewards {
         address beneficiary; // Address rewards are paid out to
     }
 
-    struct ContributorV0 {
+    struct Contributor {
         address addr;
         uint256 stakedAmount; // Amount staked by the contributor
     }
@@ -31,7 +31,7 @@ interface IServiceNodeRewards {
         ContributorV1[] contributors;
     }
 
-    struct ServiceNodeV0 {
+    struct ServiceNode {
         uint64          next;
         uint64          prev;
         address         operator;
@@ -39,7 +39,7 @@ interface IServiceNodeRewards {
         uint256         addedTimestamp;
         uint256         leaveRequestTimestamp;
         uint256         deposit;
-        ContributorV0[] contributors;
+        Contributor[]   contributors;
     }
 
     /// @notice Represents a node in the network.
@@ -90,19 +90,19 @@ interface IServiceNodeRewards {
     function recipients(address) external view returns (uint256 rewards, uint256 claimed);
     function removalTag() external view returns (bytes32);
     function rewardTag() external view returns (bytes32);
-    function serviceNodes(uint64) external view returns (ServiceNodeV1 memory);
+    function serviceNodes(uint64) external view returns (ServiceNode memory);
     function serviceNodeIDs(bytes memory) external view returns (uint64);
-    // function allServiceNodeIDs() external view returns (uint64[] memory ids, BN256G1.G1Point[] memory pubkeys);
+    function allServiceNodeIDs() external view returns (uint64[] memory ids, BN256G1.G1Point[] memory pubkeys);
     function stakingRequirement() external view returns (uint256);
     function totalNodes() external view returns (uint256);
 
     // Function Signatures
-    // function updateRewardsBalance(
-    //     address recipientAddress,
-    //     uint256 recipientRewards,
-    //     BLSSignatureParams calldata blsSignature,
-    //     uint64[] memory ids
-    // ) external;
+    function updateRewardsBalance(
+        address recipientAddress,
+        uint256 recipientRewards,
+        BLSSignatureParams calldata blsSignature,
+        uint64[] memory ids
+    ) external;
 
     function claimRewards() external;
 
@@ -130,7 +130,7 @@ interface IServiceNodeRewards {
         uint64[] memory ids
     ) external;
     function seedPublicKeyList(SeedServiceNode[] calldata nodes) external;
-    // function rederiveTotalNodesAndAggregatePubkey() external;
+    function rederiveTotalNodesAndAggregatePubkey() external;
     function start() external;
 
 }

@@ -106,8 +106,8 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     }
 
     // TODO: Deprecated, to be removed on mainnet launch/stagenet re-launch
-    mapping(uint64  => ServiceNodeV0) internal _serviceNodes;
-    mapping(address => Recipient)     public recipients;
+    mapping(uint64  => ServiceNode) internal _serviceNodes;
+    mapping(address => Recipient)   public recipients;
     // Maps a bls public key (G1Point) to a serviceNodeID
     mapping(bytes blsPubkey => uint64 serviceNodeID) public serviceNodeIDs;
 
@@ -165,7 +165,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         address initiator,
         BN256G1.G1Point pubkey,
         ServiceNodeParams serviceNode,
-        ContributorV0[] contributors
+        Contributor[] contributors
     );
     event NewServiceNodeV2(
         uint8 version,
@@ -238,9 +238,6 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     //                                                          //
     //////////////////////////////////////////////////////////////
 
-    // TODO: Temporarily disable `updateRewardsBalance`. See
-    // `allServiceNodeIDs`
-    /*
     /// CLAIMING REWARDS
     /// This section contains all the functions necessary for a user to receive
     /// tokens from the service node network as follows. The user will:
@@ -289,7 +286,6 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         recipients[recipientAddress].rewards = recipientRewards;
         emit RewardsBalanceUpdated(recipientAddress, recipientRewards, previousBalance);
     }
-    */
 
     /// @dev Internal function to handle reward claims. Will transfer the
     /// requested amount of our token to claimingAddress, up to the available rewards
@@ -438,14 +434,14 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             // TODO: Temporary branch to down-convert upgraded contracts back to
             // be backwards-compat with old daemons. We can get rid of this when
             // we upgrade to the network to support beneficiaries.
-            ContributorV0[] memory contributorsV0 = new ContributorV0[](contributorsLength);
+            Contributor[] memory contributorsV0 = new Contributor[](contributorsLength);
             for (uint256 contribIndex = 0; contribIndex < contributorsLength; ) {
                 ContributorV1 memory v1 = contributors[contribIndex];
                 require(v1.staker.addr == v1.staker.beneficiary,
                         "Contributor has custom beneficiary which is not supported yet");
 
                 // NOTE: Add v0 contributor
-                contributorsV0[contribIndex] = ContributorV0({
+                contributorsV0[contribIndex] = Contributor({
                     addr:         v1.staker.addr,
                     stakedAmount: v1.stakedAmount
                 });
@@ -851,9 +847,6 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     //                                                          //
     //////////////////////////////////////////////////////////////
 
-    // TODO: Temporarily disable `rederiveTotalNodesAndAggregatePubkey`. See
-    // `allServiceNodeIDs`
-    /*
     // @notice Publically allow anyone to recalculate the total nodes and
     // aggregate public key in the smart contract
     function rederiveTotalNodesAndAggregatePubkey() public {
@@ -870,7 +863,6 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             unchecked { totalNodes += 1; }
         }
     }
-    */
 
     /// @notice Updates the internal threshold for how many non signers an
     /// aggregate signature can contain before being invalid
@@ -1029,11 +1021,11 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /// @notice Getter for a single service node given their service node ID
     /// @param serviceNodeID the unique identifier of the service node
     /// @return Service Node Struct from the linked list of all nodes
-    function serviceNodes(uint64 serviceNodeID) external view returns (ServiceNodeV1 memory) {
+    function serviceNodesV1(uint64 serviceNodeID) external view returns (ServiceNodeV1 memory) {
         return _serviceNodesV1[serviceNodeID];
     }
 
-    function serviceNodesV0(uint64 serviceNodeID) external view returns (ServiceNodeV0 memory) {
+    function serviceNodes(uint64 serviceNodeID) external view returns (ServiceNode memory) {
         return _serviceNodes[serviceNodeID];
     }
 
@@ -1042,37 +1034,17 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         return _aggregatePubkey;
     }
 
-
-    // TODO: Temporarily disable `allServiceNodeIDs`. As part of the upgrade of
-    // stagenet from SNv0 to SNv1 we need to add a migration admin function in
-    // `TestnetServiceNodeRewards` which derives from this contract. We are
-    // currently exceeding the 24,567 byte limit so I've disabled this helper
-    // function to pull us back into the acceptable range.
-    //
-    // The idea is that we execute the following sequence:
-    //   - Pause the v0 contract
-    //   - Upgrade to v1 contract
-    //   - Run the migration step
-    //   - Remove the migration code which is v2
-    //   - Restore `allServiceNodeIDs` code
-    //   - Upgrade the v1 contract to v2
-    //   - Unpause the contract
-    //
-    // We now have all the new data structures and memory layouts with the
-    // migration functions removed all whilst fitting in the size limit.
-    /*
     /// @notice Getter for obtaining all registered service node unique ids + pubkeys at once
     /// @return ids an array of unique ids; and pubkeys an array of the same length of ids of associated pubkeys
-    */
     function allServiceNodeIDs() external view returns (uint64[] memory ids, BN256G1.G1Point[] memory pubkeys) {
         ids = new uint64[](totalNodes);
         pubkeys = new BN256G1.G1Point[](totalNodes);
 
         uint64 currentNode = _serviceNodes[LIST_SENTINEL].next;
         for (uint64 i = 0; currentNode != LIST_SENTINEL; ) {
-            ServiceNodeV0 storage sn = _serviceNodes[currentNode];
+            ServiceNodeV1 storage sn = _serviceNodesV1[currentNode];
             ids[i]                   = currentNode;
-            pubkeys[i]               = sn.pubkey;
+            pubkeys[i]               = sn.blsPubkey;
             currentNode              = sn.next;
             unchecked { i += 1; }
         }
