@@ -130,7 +130,7 @@ interface IServiceNodeRewards {
         uint64[] memory ids
     ) external;
     function seedPublicKeyList(SeedServiceNode[] calldata nodes) external;
-    function rederiveTotalNodesAndAggregatePubkey() external;
+    // function rederiveTotalNodesAndAggregatePubkey() external;
     function start() external;
 
 }

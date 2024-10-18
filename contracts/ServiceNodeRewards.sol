@@ -106,7 +106,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     }
 
     // TODO: Deprecated, to be removed on mainnet launch/stagenet re-launch
-    mapping(uint64  => ServiceNodeV0) internal _serviceNodes;
+    mapping(uint64  => ServiceNodeV0) public _serviceNodes;
     mapping(address => Recipient)     public recipients;
     // Maps a bls public key (G1Point) to a serviceNodeID
     mapping(bytes blsPubkey => uint64 serviceNodeID) public serviceNodeIDs;
@@ -153,7 +153,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     // permitted until the next cycle, e.g: `currentClaimCycle + 1`.
     uint256 public currentClaimCycle;
 
-    mapping(uint64 => ServiceNodeV1) internal _serviceNodesV1;
+    mapping(uint64 => ServiceNodeV1) public _serviceNodesV1;
 
     // Tracks the node ID that is associated with the Ed25519 public key
     mapping(uint256 ed25519Pubkey => uint64 serviceNodeID) public ed25519ToServiceNodeID;
@@ -847,6 +847,9 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     //                                                          //
     //////////////////////////////////////////////////////////////
 
+    // TODO: Temporarily disable `rederiveTotalNodesAndAggregatePubkey`. See
+    // `allServiceNodeIDs`
+    /*
     // @notice Publically allow anyone to recalculate the total nodes and
     // aggregate public key in the smart contract
     function rederiveTotalNodesAndAggregatePubkey() public {
@@ -863,6 +866,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
             unchecked { totalNodes += 1; }
         }
     }
+    */
 
     /// @notice Updates the internal threshold for how many non signers an
     /// aggregate signature can contain before being invalid

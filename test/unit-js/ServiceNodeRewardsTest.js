@@ -140,9 +140,9 @@ describe("ServiceNodeRewards Contract Tests", function () {
             verifySeedData(await serviceNodeRewards.serviceNodes(2), seedData[1]);
 
             // NOTE: Recalculate the aggregate pubkey
-            await serviceNodeRewards.rederiveTotalNodesAndAggregatePubkey();
-            let recalc_aggregate_pubkey = await serviceNodeRewards.aggregatePubkey();
-            expect(recalc_aggregate_pubkey).to.deep.equal(expected_aggregate_pubkey);
+            // await serviceNodeRewards.rederiveTotalNodesAndAggregatePubkey();
+            // let recalc_aggregate_pubkey = await serviceNodeRewards.aggregatePubkey();
+            // expect(recalc_aggregate_pubkey).to.deep.equal(expected_aggregate_pubkey);
         });
 
         it("Should fail to seed public key list with duplicate items", async function () {
