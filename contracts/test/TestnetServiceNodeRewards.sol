@@ -38,8 +38,7 @@ contract TestnetServiceNodeRewards is ServiceNodeRewards {
     // same address as the staker for V0 nodes. Additionally, each node also
     // stores their Ed25519 key on registration hence that must be seeded
     // initially on migration from V0 to V1.
-    function migrateToSNv1Beneficiary(BN256G1.G1Point[] calldata blsPubkeys, uint256[] calldata ed25519Pubkeys) external onlyOwner {
-        require(blsPubkeys.length == ed25519Pubkeys.length);
+    function migrateToSNv1Beneficiary() external onlyOwner {
 
         // NOTE: Heuristic to approximately assume if the contract has been
         // migrated before or not. This check essentially asks if the list is
@@ -52,7 +51,7 @@ contract TestnetServiceNodeRewards is ServiceNodeRewards {
         _serviceNodesV1[LIST_SENTINEL].next = _serviceNodes[LIST_SENTINEL].next;
 
         // NOTE: Walk the SN list and upgrade from V0 to V1 structures
-        for (uint64 it = _serviceNodes[LIST_SENTINEL].next; it != LIST_SENTINEL; it = _serviceNodes[it].next) {
+        for (uint64 it = _serviceNodes[LIST_SENTINEL].next; it != LIST_SENTINEL; ) {
             ServiceNodeV0 storage v0 = _serviceNodes[it];
 
             // NOTE: Assign V0 fields to V1
@@ -81,9 +80,13 @@ contract TestnetServiceNodeRewards is ServiceNodeRewards {
                 v1.contributors.push(contribV1);
                 unchecked { contribIndex++; }
             }
+
+            it = v0.next;
         }
 
         // NOTE: Patch in the Ed25519 keys for the nodes we have
+        /*
+        require(blsPubkeys.length == ed25519Pubkeys.length);
         for (uint256 i = 0; i < blsPubkeys.length; ) {
             BN256G1.G1Point calldata key = blsPubkeys[i];
             bytes memory keyBytes        = BN256G1.getKeyForG1Point(key);
@@ -96,5 +99,6 @@ contract TestnetServiceNodeRewards is ServiceNodeRewards {
             _serviceNodesV1[snID].ed25519Pubkey = ed25519Pubkey;
             unchecked { i++; }
         }
+        */
     }
 }

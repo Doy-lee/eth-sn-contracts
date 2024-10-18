@@ -106,7 +106,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     }
 
     // TODO: Deprecated, to be removed on mainnet launch/stagenet re-launch
-    mapping(uint64  => ServiceNodeV0) public _serviceNodes;
+    mapping(uint64  => ServiceNodeV0) internal _serviceNodes;
     mapping(address => Recipient)     public recipients;
     // Maps a bls public key (G1Point) to a serviceNodeID
     mapping(bytes blsPubkey => uint64 serviceNodeID) public serviceNodeIDs;
@@ -153,7 +153,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     // permitted until the next cycle, e.g: `currentClaimCycle + 1`.
     uint256 public currentClaimCycle;
 
-    mapping(uint64 => ServiceNodeV1) public _serviceNodesV1;
+    mapping(uint64 => ServiceNodeV1) internal _serviceNodesV1;
 
     // Tracks the node ID that is associated with the Ed25519 public key
     mapping(uint256 ed25519Pubkey => uint64 serviceNodeID) public ed25519ToServiceNodeID;
@@ -1033,6 +1033,10 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         return _serviceNodesV1[serviceNodeID];
     }
 
+    function serviceNodesV0(uint64 serviceNodeID) external view returns (ServiceNodeV0 memory) {
+        return _serviceNodes[serviceNodeID];
+    }
+
     /// @notice Getter function for the aggregatePubkey
     function aggregatePubkey() external view returns (BN256G1.G1Point memory) {
         return _aggregatePubkey;
@@ -1059,22 +1063,22 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     /*
     /// @notice Getter for obtaining all registered service node unique ids + pubkeys at once
     /// @return ids an array of unique ids; and pubkeys an array of the same length of ids of associated pubkeys
+    */
     function allServiceNodeIDs() external view returns (uint64[] memory ids, BN256G1.G1Point[] memory pubkeys) {
         ids = new uint64[](totalNodes);
         pubkeys = new BN256G1.G1Point[](totalNodes);
 
-        uint64 currentNode = _serviceNodesV1[LIST_SENTINEL].next;
+        uint64 currentNode = _serviceNodes[LIST_SENTINEL].next;
         for (uint64 i = 0; currentNode != LIST_SENTINEL; ) {
-            ServiceNodeV1 storage sn = _serviceNodesV1[currentNode];
-            ids[i]                 = currentNode;
-            pubkeys[i]             = sn.blsPubkey;
-            currentNode            = sn.next;
+            ServiceNodeV0 storage sn = _serviceNodes[currentNode];
+            ids[i]                   = currentNode;
+            pubkeys[i]               = sn.pubkey;
+            currentNode              = sn.next;
             unchecked { i += 1; }
         }
 
         return (ids, pubkeys);
     }
-    */
 
     /// @dev Builds a tag string using a base tag and contract-specific
     /// information. This is used when signing messages to prevent reuse of
