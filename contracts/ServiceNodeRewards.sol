@@ -1030,6 +1030,25 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         return _aggregatePubkey;
     }
 
+
+    // TODO: Temporarily disable `allServiceNodeIDs`. As part of the upgrade of
+    // stagenet from SNv0 to SNv1 we need to add a migration admin function in
+    // `TestnetServiceNodeRewards` which derives from this contract. We are
+    // currently exceeding the 24,567 byte limit so I've disabled this helper
+    // function to pull us back into the acceptable range.
+    //
+    // The idea is that we execute the following sequence:
+    //   - Pause the v0 contract
+    //   - Upgrade to v1 contract
+    //   - Run the migration step
+    //   - Remove the migration code which is v2
+    //   - Restore `allServiceNodeIDs` code
+    //   - Upgrade the v1 contract to v2
+    //   - Unpause the contract
+    //
+    // We now have all the new data structures and memory layouts with the
+    // migration functions removed all whilst fitting in the size limit.
+    /*
     /// @notice Getter for obtaining all registered service node unique ids + pubkeys at once
     /// @return ids an array of unique ids; and pubkeys an array of the same length of ids of associated pubkeys
     function allServiceNodeIDs() external view returns (uint64[] memory ids, BN256G1.G1Point[] memory pubkeys) {
@@ -1047,6 +1066,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
 
         return (ids, pubkeys);
     }
+    */
 
     /// @dev Builds a tag string using a base tag and contract-specific
     /// information. This is used when signing messages to prevent reuse of
