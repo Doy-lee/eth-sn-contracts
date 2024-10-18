@@ -97,12 +97,12 @@ interface IServiceNodeRewards {
     function totalNodes() external view returns (uint256);
 
     // Function Signatures
-    function updateRewardsBalance(
-        address recipientAddress,
-        uint256 recipientRewards,
-        BLSSignatureParams calldata blsSignature,
-        uint64[] memory ids
-    ) external;
+    // function updateRewardsBalance(
+    //     address recipientAddress,
+    //     uint256 recipientRewards,
+    //     BLSSignatureParams calldata blsSignature,
+    //     uint64[] memory ids
+    // ) external;
 
     function claimRewards() external;
 

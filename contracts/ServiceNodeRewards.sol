@@ -238,6 +238,9 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
     //                                                          //
     //////////////////////////////////////////////////////////////
 
+    // TODO: Temporarily disable `updateRewardsBalance`. See
+    // `allServiceNodeIDs`
+    /*
     /// CLAIMING REWARDS
     /// This section contains all the functions necessary for a user to receive
     /// tokens from the service node network as follows. The user will:
@@ -286,6 +289,7 @@ contract ServiceNodeRewards is Initializable, Ownable2StepUpgradeable, PausableU
         recipients[recipientAddress].rewards = recipientRewards;
         emit RewardsBalanceUpdated(recipientAddress, recipientRewards, previousBalance);
     }
+    */
 
     /// @dev Internal function to handle reward claims. Will transfer the
     /// requested amount of our token to claimingAddress, up to the available rewards
