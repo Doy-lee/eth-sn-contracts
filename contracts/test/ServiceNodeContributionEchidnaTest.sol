@@ -102,7 +102,7 @@ contract ServiceNodeContributionEchidnaTest {
     function echidna_prop_total_contribution_is_staking_requirement() public view returns (bool) {
         bool result = true;
         uint256 total = snContribution.totalContribution();
-        if (snContribution.status() == IServiceNodeContribution.Status.Finalized) {
+        if (snContribution.metadata().status == IServiceNodeContribution.Status.Finalized) {
             result = total == STAKING_REQUIREMENT;
         } else {
             result = total <= STAKING_REQUIREMENT;
@@ -112,30 +112,29 @@ contract ServiceNodeContributionEchidnaTest {
     }
 
     function echidna_prop_operator_has_contribution() public view returns (bool) {
+        IServiceNodeContribution.Metadata memory nodeParams = snContribution.metadata();
         bool result = snContribution.totalContribution() > 0
-            ? (snContribution.contributions(snContribution.operator()) > 0)
-            : (snContribution.contributions(snContribution.operator()) == 0);
+            ? (snContribution.contributions(nodeParams.operator) > 0)
+            : (snContribution.contributions(nodeParams.operator) == 0);
         assert(result);
         return result;
     }
 
     function echidna_prop_check_immutable_props() public view returns (bool) {
-        (uint256 snPubkey, uint256 snSig0, uint256 snSig1, uint16 fee) = snContribution.serviceNodeParams();
-        bool snParamsLockedIn = (snParams.serviceNodePubkey == snPubkey) &&
-            (snParams.serviceNodeSignature1 == snSig0) &&
-            (snParams.serviceNodeSignature2 == snSig1) &&
-            (snParams.fee == fee);
+        IServiceNodeContribution.Metadata memory nodeParams = snContribution.metadata();
+        bool snParamsLockedIn = (snParams.serviceNodePubkey == nodeParams.serviceNodeParams.serviceNodePubkey) &&
+            (snParams.serviceNodeSignature1 == nodeParams.serviceNodeParams.serviceNodeSignature1) &&
+            (snParams.serviceNodeSignature2 == nodeParams.serviceNodeParams.serviceNodeSignature2) &&
+            (snParams.fee == nodeParams.serviceNodeParams.fee);
         assert(snParamsLockedIn);
-
-        (uint256 blsPKeyX, uint256 blsPKeyY) = snContribution.blsPubkey();
 
         bool result = address(snRewards) == address(snContribution.stakingRewardsContract()) &&
             STAKING_REQUIREMENT == snContribution.stakingRequirement() &&
             snRewards.maxContributors() == snContribution.maxContributors() &&
-            snOperator == snContribution.operator() &&
+            snOperator == nodeParams.operator &&
             sentToken == snContribution.stakingRewardsContract().designatedToken() &&
-            blsPubkey.X == blsPKeyX &&
-            blsPubkey.Y == blsPKeyY &&
+            blsPubkey.X == nodeParams.blsPubkey.X &&
+            blsPubkey.Y == nodeParams.blsPubkey.Y &&
             snParamsLockedIn;
         assert(result);
         return result;
@@ -159,7 +158,8 @@ contract ServiceNodeContributionEchidnaTest {
         ) {
             uint256 balanceBeforeContribute = sentToken.balanceOf(msg.sender);
 
-            assert(snContribution.contributions(snContribution.operator()) == 0);
+            IServiceNodeContribution.Metadata memory nodeParams = snContribution.metadata();
+            assert(snContribution.contributions(nodeParams.operator) == 0);
             assert(snContribution.operatorContribution() == 0);
             assert(snContribution.totalContribution() == 0);
             assert(snContribution.contributorAddressesLength() == 0);
@@ -168,7 +168,7 @@ contract ServiceNodeContributionEchidnaTest {
                 assert(false); // Contribute must succeed as all necessary preconditions are met
             }
 
-            assert(snContribution.contributions(snContribution.operator()) >= snContribution.minimumContribution());
+            assert(snContribution.contributions(nodeParams.operator) >= snContribution.minimumContribution());
             assert(snContribution.operatorContribution() >= snContribution.minimumContribution());
             assert(snContribution.totalContribution() >= snContribution.minimumContribution());
             assert(snContribution.contributorAddressesLength() == 1);
@@ -201,7 +201,7 @@ contract ServiceNodeContributionEchidnaTest {
         assert(sentToken.balanceOf(msg.sender) == balanceBeforeContribute - amount);
 
         if (snContribution.totalContribution() == STAKING_REQUIREMENT) {
-            assert(snContribution.status() == IServiceNodeContribution.Status.Finalized);
+            assert(snContribution.metadata().status == IServiceNodeContribution.Status.Finalized);
             assert(sentToken.balanceOf(address(snContribution)) == 0);
         }
     }
@@ -227,7 +227,7 @@ contract ServiceNodeContributionEchidnaTest {
             assert(block.timestamp < snContribution.WITHDRAWAL_DELAY());
         }
 
-        assert(snContribution.status() != IServiceNodeContribution.Status.Finalized);
+        assert(snContribution.metadata().status != IServiceNodeContribution.Status.Finalized);
         assert(snContribution.operatorContribution() <= STAKING_REQUIREMENT);
         assert(snContribution.totalContribution() <= STAKING_REQUIREMENT);
 
@@ -239,7 +239,7 @@ contract ServiceNodeContributionEchidnaTest {
             try snContribution.reset() {} catch {
                 assert(false); // Can reset if finalized
             }
-            assert(snContribution.status() == IServiceNodeContribution.Status.WaitForOperatorContrib);
+            assert(snContribution.metadata().status == IServiceNodeContribution.Status.WaitForOperatorContrib);
             assert(snContribution.contributions(msg.sender) == 0);
             assert(snContribution.operatorContribution() == 0);
         } else {
@@ -251,8 +251,8 @@ contract ServiceNodeContributionEchidnaTest {
 
     function testRescueERC20(uint256 amount) public {
         if (msg.sender == snOperator &&
-            (snContribution.status() == IServiceNodeContribution.Status.WaitForOperatorContrib ||
-             snContribution.status() == IServiceNodeContribution.Status.Finalized)) {
+            (snContribution.metadata().status == IServiceNodeContribution.Status.WaitForOperatorContrib ||
+             snContribution.metadata().status == IServiceNodeContribution.Status.Finalized)) {
             bool fundTheContract = (amount % 2 == 0); // NOTE: 50% chance of funding
             if (fundTheContract) assert(sentToken.transferFrom(address(0), address(snContribution), amount));
 

@@ -30,12 +30,12 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
     uint256                                       public   immutable stakingRequirement;
 
     // Service Node
-    BN256G1.G1Point                               public blsPubkey;
-    IServiceNodeRewards.ServiceNodeParams         public serviceNodeParams;
-    IServiceNodeRewards.BLSSignatureParams        public blsSignature;
+    BN256G1.G1Point                               internal blsPubkey;
+    IServiceNodeRewards.ServiceNodeParams         internal serviceNodeParams;
+    IServiceNodeRewards.BLSSignatureParams        internal blsSignature;
 
     // Contributions
-    address                                       public immutable operator;
+    address                                       internal immutable operator;
     mapping(address stakerAddr => uint256 amount) public           contributions;
     mapping(address stakerAddr => uint256 amount) public           contributionTimestamp;
     IServiceNodeRewards.Staker[]                  public           contributorAddresses;
@@ -46,7 +46,7 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
     address[]                                           public reservedContributionsAddresses;
 
     // Smart Contract
-    Status                                        public          status           = Status.WaitForOperatorContrib;
+    Status                                        internal          status           = Status.WaitForOperatorContrib;
     uint64                                        public constant WITHDRAWAL_DELAY = 1 days;
     uint16                                        public constant MAX_FEE          = 10000;
 
@@ -58,7 +58,7 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
     // By default, this flag is false which makes the finalize step
     // automatic when the staking requirement is fulfilled (including when
     // a public contributor fulfills the node).
-    bool public manualFinalize;
+    bool internal manualFinalize;
 
     // Modifers
     modifier onlyOperator() {
@@ -110,6 +110,15 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
     //                  State-changing functions                //
     //                                                          //
     //////////////////////////////////////////////////////////////
+
+    function metadata() external view returns (Metadata memory result) {
+        result.blsPubkey         = blsPubkey;
+        result.blsSignature      = blsSignature;
+        result.serviceNodeParams = serviceNodeParams;
+        result.operator          = operator;
+        result.manualFinalize    = manualFinalize;
+        result.status            = status;
+    }
 
     function updateManualFinalize(bool value) external onlyOperator { _updateManualFinalize(value); }
 

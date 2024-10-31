@@ -56,11 +56,6 @@ interface IServiceNodeContribution {
     function stakingRewardsContract()                external view returns (IServiceNodeRewards);
     function stakingRequirement()                    external view returns (uint256);
 
-    function blsPubkey()                             external view returns (uint256, uint256);
-    function serviceNodeParams()                     external view returns (uint256, uint256, uint256, uint16);
-    function blsSignature()                          external view returns (uint256, uint256, uint256, uint256);
-
-    function operator()                              external view returns (address);
     function contributions(address)                  external view returns (uint256);
     function contributionTimestamp(address)          external view returns (uint256);
     function contributorAddresses(uint256)           external view returns (address, address);
@@ -68,9 +63,6 @@ interface IServiceNodeContribution {
 
     function reservedContributions(address)          external view returns (uint256, bool);
     function reservedContributionsAddresses(uint256) external view returns (address);
-
-    function status()                                external view returns (Status);
-    function manualFinalize()                        external view returns (bool);
 
     //////////////////////////////////////////////////////////////
     //                                                          //
@@ -300,6 +292,22 @@ interface IServiceNodeContribution {
     //                Non-state-changing functions              //
     //                                                          //
     //////////////////////////////////////////////////////////////
+
+    struct Metadata
+    {
+        BN256G1.G1Point                        blsPubkey;
+        IServiceNodeRewards.ServiceNodeParams  serviceNodeParams;
+        IServiceNodeRewards.BLSSignatureParams blsSignature;
+        address                                operator;
+        bool                                   manualFinalize;
+        Status                                 status;
+    }
+
+    /// @notice Retrieve the state of the contract excluding contributors
+    ///
+    /// @dev This is useful for reducing eth_call invocations by atomically
+    /// reading multiple contract properties in a single call.
+    function metadata() external view returns (Metadata memory);
 
     /// @notice Calculates the minimum contribution amount given the current
     /// contribution status of the contract.
