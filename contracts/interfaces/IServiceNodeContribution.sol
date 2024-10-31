@@ -53,7 +53,6 @@ interface IServiceNodeContribution {
     //                                                          //
     //////////////////////////////////////////////////////////////
 
-    function SENT()                                  external view returns (IERC20);
     function stakingRewardsContract()                external view returns (IServiceNodeRewards);
     function stakingRequirement()                    external view returns (uint256);
 

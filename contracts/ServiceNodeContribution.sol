@@ -25,9 +25,9 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
 
     // Staking
     // solhint-disable-next-line var-name-mixedcase
-    IERC20                                        public immutable SENT;
-    IServiceNodeRewards                           public immutable stakingRewardsContract;
-    uint256                                       public immutable stakingRequirement;
+    IERC20                                        internal immutable SENT;
+    IServiceNodeRewards                           public   immutable stakingRewardsContract;
+    uint256                                       public   immutable stakingRequirement;
 
     // Service Node
     BN256G1.G1Point                               public blsPubkey;
