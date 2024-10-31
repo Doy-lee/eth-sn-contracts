@@ -862,6 +862,22 @@ describe("ServiceNodeContribution Contract Tests", function () {
                  const finalBalance = await sentToken.balanceOf(contributor.getAddress());
                  expect(finalBalance).to.equal(initialBalance + minContribution);
             });
+
+            it("Test getDeployedContracts", async function () {
+                const chunkSize = 128;
+                let offset = 0
+                for (;;) {
+                    const list = await snContributionFactory.getDeployedContracts(offset, chunkSize);
+                    for (let index = 0; index < list.length; index++) {
+                        const address = list[index];
+                        expect(address).to.equal(snContributionAddress);
+                    }
+                    offset += list.length;
+                    if (list.length == 0)
+                        break;
+                }
+                expect(offset).to.equal(1);
+            });
          });
     });
 

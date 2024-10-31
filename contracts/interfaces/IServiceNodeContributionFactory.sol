@@ -13,6 +13,4 @@ interface IServiceNodeContributionFactory {
                     IServiceNodeRewards.ServiceNodeParams calldata params,
                     IServiceNodeRewards.ReservedContributor[] calldata reserved,
                     bool manualFinalize) external returns (address result);
-
-    function owns(address contractAddress) external view returns (bool);
 }

@@ -58,13 +58,13 @@ interface IServiceNodeContribution {
     function stakingRequirement()                    external view returns (uint256);
 
     function blsPubkey()                             external view returns (uint256, uint256);
-    function serviceNodeParams()                     external view returns (IServiceNodeRewards.ServiceNodeParams memory);
-    function blsSignature()                          external view returns (IServiceNodeRewards.BLSSignatureParams memory);
+    function serviceNodeParams()                     external view returns (uint256, uint256, uint256, uint16);
+    function blsSignature()                          external view returns (uint256, uint256, uint256, uint256);
 
     function operator()                              external view returns (address);
     function contributions(address)                  external view returns (uint256);
     function contributionTimestamp(address)          external view returns (uint256);
-    function contributorAddresses(uint256)           external view returns (IServiceNodeRewards.Staker memory);
+    function contributorAddresses(uint256)           external view returns (address, address);
     function maxContributors()                       external view returns (uint256);
 
     function reservedContributions(address)          external view returns (uint256, bool);
@@ -333,10 +333,6 @@ interface IServiceNodeContribution {
     /// @notice Calculates the minimum operator contribution given the staking
     /// requirement.
     function minimumOperatorContribution(uint256 _stakingRequirement) external pure returns (uint256 result);
-
-    /// @dev This function allows unit-tests to query the length without having
-    /// to know the storage slot of the array size.
-    function contributorAddressesLength() external view returns (uint256 result);
 
     /// @notice Get the contribution by the operator, defined to always be the
     /// first contribution in the contract.

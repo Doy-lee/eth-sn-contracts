@@ -167,7 +167,7 @@ contract TokenVestingStaking is ITokenVestingStaking, Shared {
 
     function getContributionContract(address contractAddr) private view returns (IServiceNodeContribution result) {
         // NOTE: Retrieve contract
-        bool contractDeployed = snContribFactory.owns(contractAddr);
+        bool contractDeployed = snContribFactory.deployedContracts(contractAddr);
         result                = IServiceNodeContribution(contractAddr);
         require(contractDeployed, "Contract address is not a valid multi-contributor SN contract");
     }

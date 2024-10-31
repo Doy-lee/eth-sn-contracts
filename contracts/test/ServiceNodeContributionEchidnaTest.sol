@@ -120,11 +120,11 @@ contract ServiceNodeContributionEchidnaTest {
     }
 
     function echidna_prop_check_immutable_props() public view returns (bool) {
-        IServiceNodeRewards.ServiceNodeParams memory params = snContribution.serviceNodeParams();
-        bool snParamsLockedIn = (snParams.serviceNodePubkey == params.serviceNodePubkey) &&
-            (snParams.serviceNodeSignature1 == params.serviceNodeSignature1) &&
-            (snParams.serviceNodeSignature2 == params.serviceNodeSignature2) &&
-            (snParams.fee == params.fee);
+        (uint256 snPubkey, uint256 snSig0, uint256 snSig1, uint16 fee) = snContribution.serviceNodeParams();
+        bool snParamsLockedIn = (snParams.serviceNodePubkey == snPubkey) &&
+            (snParams.serviceNodeSignature1 == snSig0) &&
+            (snParams.serviceNodeSignature2 == snSig1) &&
+            (snParams.fee == fee);
         assert(snParamsLockedIn);
 
         (uint256 blsPKeyX, uint256 blsPKeyY) = snContribution.blsPubkey();

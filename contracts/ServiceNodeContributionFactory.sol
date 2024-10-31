@@ -13,6 +13,7 @@ contract ServiceNodeContributionFactory is Initializable, Ownable2StepUpgradeabl
     /// Tracks the contribution contracts that have been deployed from this
     /// factory
     mapping(address => bool) public deployedContracts;
+    address[]                public deployedContractsArray;
 
     // Events
     event NewServiceNodeContributionContract(address indexed contributorContract, uint256 serviceNodePubkey);
@@ -43,8 +44,20 @@ contract ServiceNodeContributionFactory is Initializable, Ownable2StepUpgradeabl
 
         result = address(newContract);
         deployedContracts[result] = true;
+        deployedContractsArray.push(result);
         emit NewServiceNodeContributionContract(result, params.serviceNodePubkey);
         return result;
+    }
+
+    function getDeployedContracts(uint256 offset, uint256 chunkSize) public view returns (address[] memory result) {
+        offset            = offset > deployedContractsArray.length ? deployedContractsArray.length : offset;
+        uint256 remainder = deployedContractsArray.length - offset;
+        chunkSize         = remainder > chunkSize ? chunkSize : remainder;
+        result            = new address[](chunkSize);
+        for (uint256 i = 0; i < chunkSize; ) {
+            result[i] = deployedContractsArray[offset + i];
+            unchecked { i += 1; }
+        }
     }
 
     /// @notice Pause to prevent new multi-contrib contracts being deployed
@@ -55,10 +68,5 @@ contract ServiceNodeContributionFactory is Initializable, Ownable2StepUpgradeabl
     /// @notice Unpause allows new multi-contrib contracts to be deployed
     function unpause() public onlyOwner {
         _unpause();
-    }
-
-    /// @notice Check if the `contractAddress` was deployed by this factory
-    function owns(address contractAddress) external view returns (bool) {
-        return deployedContracts[contractAddress];
     }
 }
