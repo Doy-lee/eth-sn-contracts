@@ -614,11 +614,13 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
         beneficiaries  = new address[](length);
         contribs       = new uint256[](length);
         for (uint256 i = 0; i < length; ) {
-            IServiceNodeRewards.Staker storage staker = contributorAddresses[i];
-            addrs[i]                                  = staker.addr;
-            beneficiaries[i]                          = staker.beneficiary;
-            contribs[i]                               = contributions[addrs[i]];
-            unchecked { i += 1; }
+            unchecked {
+                IServiceNodeRewards.Staker storage staker  = contributorAddresses[i];
+                addrs[i]                                   = staker.addr;
+                beneficiaries[i]                           = staker.beneficiary;
+                contribs[i]                                = contributions[addrs[i]];
+                i                                         += 1;
+            }
         }
         return (addrs, beneficiaries, contribs);
     }
@@ -632,12 +634,14 @@ contract ServiceNodeContribution is Shared, IServiceNodeContribution {
         contribs       = new uint256[](length);
         received       = new bool[](length);
         for (uint256 i = 0; i < length; ) {
-            address reservedAddr                  = reservedContributionsAddresses[i];
-            ReservedContribution storage reserved = reservedContributions[reservedAddr];
-            addrs[i]                              = reservedAddr;
-            contribs[i]                           = reserved.amount;
-            received[i]                           = reserved.received;
-            unchecked { i += 1; }
+            unchecked {
+                address reservedAddr                   = reservedContributionsAddresses[i];
+                ReservedContribution storage reserved  = reservedContributions[reservedAddr];
+                addrs[i]                               = reservedAddr;
+                contribs[i]                            = reserved.amount;
+                received[i]                            = reserved.received;
+                i                                     += 1;
+            }
         }
         return (addrs, contribs, received);
     }
