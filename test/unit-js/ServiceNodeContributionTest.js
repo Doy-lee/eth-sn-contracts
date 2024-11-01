@@ -66,6 +66,19 @@ const BLS_NODES =
   }
 ];
 
+async function getContractMetadata(contract) {
+    const rawMetadata = await contract.metadata();
+    const result = {
+        blsPubkey:         rawMetadata[0],
+        serviceNodeParams: rawMetadata[1],
+        blsSignature:      rawMetadata[2],
+        operator:          rawMetadata[3],
+        manualFinalize:    rawMetadata[4],
+        status:            rawMetadata[5],
+    }
+    return result;
+}
+
 // Withdraw a contributor from the service node contribution contract
 // `snContribution`. This function expects to succeed (e.g. the contributor must
 // have successfully contributed to the contract prior).
@@ -596,7 +609,9 @@ describe("ServiceNodeContribution Contract Tests", function () {
 
                  expect(await snContribution.totalContribution()).to.equal(await snContribution.stakingRequirement());
                  expect(await snContribution.contributorAddressesLength()).to.equal(await snContribution.maxContributors());
-                 expect(await snContribution.status()).to.equal(SN_CONTRIB_Status_Finalized);
+
+                 metadata = await getContractMetadata(snContribution);
+                 expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
              });
 
              it("Should not finalise if not full", async function () {
@@ -612,7 +627,9 @@ describe("ServiceNodeContribution Contract Tests", function () {
 
                  await expect(snContribution.finalize()).to.be.reverted;
 
-                 await expect(await snContribution.connect(snOperator).status()).to.equal(SN_CONTRIB_Status_OpenForPublicContrib)
+                 metadata = await getContractMetadata(snContribution);
+                 expect(metadata.status).to.equal(SN_CONTRIB_Status_OpenForPublicContrib)
+
                  await expect(await sentToken.balanceOf(snContribution))
                      .to.equal(previousContribution + minContribution);
              });
@@ -652,7 +669,8 @@ describe("ServiceNodeContribution Contract Tests", function () {
                      expect(await sentToken.balanceOf(snRewards)).to.equal(stakingRequirement);
                      expect(await snRewards.totalNodes()).to.equal(1);
 
-                     await expect(await snContribution.connect(snOperator).status()).to.equal(SN_CONTRIB_Status_Finalized);
+                     metadata = await getContractMetadata(snContribution);
+                     expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
                      expect(await sentToken.balanceOf(snContribution)).to.equal(0);
                  });
 
@@ -665,7 +683,8 @@ describe("ServiceNodeContribution Contract Tests", function () {
                      await expect(await snContribution.connect(contributor1).withdrawContribution()).to.not.be.reverted;
 
                      // NOTE: Check contract status reverted correctly
-                     await expect(await snContribution.connect(snOperator).status()).to.equal(SN_CONTRIB_Status_OpenForPublicContrib);
+                     metadata = await getContractMetadata(snContribution);
+                     expect(metadata.status).to.equal(SN_CONTRIB_Status_OpenForPublicContrib);
                  });
 
                  it("Withdraw and re-contribute using another contributor and finalize", async function () {
@@ -690,7 +709,8 @@ describe("ServiceNodeContribution Contract Tests", function () {
                      expect(await sentToken.balanceOf(snRewards)).to.equal(stakingRequirement);
                      expect(await snRewards.totalNodes()).to.equal(1);
 
-                     await expect(await snContribution.connect(snOperator).status()).to.equal(SN_CONTRIB_Status_Finalized);
+                     metadata = await getContractMetadata(snContribution);
+                     expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
                      expect(await sentToken.balanceOf(snContribution)).to.equal(0);
                  });
 
@@ -699,7 +719,8 @@ describe("ServiceNodeContribution Contract Tests", function () {
                      await expect(await snContribution.connect(owner).withdrawContribution()).to.not.be.reverted;
 
                      // NOTE: Check all funds are returned and contract state is reverted
-                     await expect(await snContribution.connect(snOperator).status()).to.equal(SN_CONTRIB_Status_WaitForOperatorContrib);
+                     metadata = await getContractMetadata(snContribution);
+                     expect(metadata.status).to.equal(SN_CONTRIB_Status_WaitForOperatorContrib);
                      expect(await sentToken.balanceOf(snContribution)).to.equal(0);
                  })
              })
@@ -718,7 +739,8 @@ describe("ServiceNodeContribution Contract Tests", function () {
                      expect(await sentToken.balanceOf(snRewards)).to.equal(stakingRequirement);
                      expect(await snRewards.totalNodes()).to.equal(1);
 
-                     await expect(await snContribution.connect(snOperator).status()).to.equal(SN_CONTRIB_Status_Finalized);
+                     metadata = await getContractMetadata(snContribution);
+                     expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
                      expect(await sentToken.balanceOf(snContribution)).to.equal(0);
                  });
 
@@ -751,9 +773,7 @@ describe("ServiceNodeContribution Contract Tests", function () {
                      const minOperatorContribution             = await snContribution.minimumOperatorContribution(stakingRequirement);
 
                      // NOTE: Test reset w/ operator
-                     const blsSignatureBefore      = await snContribution.blsSignature();
-                     const blsPubkeyBefore         = await snContribution.blsPubkey();
-                     const serviceNodeParamsBefore = await snContribution.serviceNodeParams();
+                     metadataBefore                = await getContractMetadata(snContribution);
                      const maxContributorsBefore   = await snContribution.maxContributors();
 
                      await sentToken.connect(owner).approve(snContributionAddress, minOperatorContribution);
@@ -769,10 +789,11 @@ describe("ServiceNodeContribution Contract Tests", function () {
                      expect(contributorAddresses[0]).to.equal(await owner.getAddress()); // Staker address
                      expect(contributorAddresses[1]).to.equal(await owner.getAddress()); // Beneficiary
 
-                     expect(await snContribution.status()).to.equal(SN_CONTRIB_Status_OpenForPublicContrib);
-                     expect(await snContribution.blsSignature()).to.deep.equal(blsSignatureBefore);
-                     expect(await snContribution.blsPubkey()).to.deep.equal(blsPubkeyBefore);
-                     expect(await snContribution.serviceNodeParams()).to.deep.equal(serviceNodeParamsBefore);
+                     metadata = await getContractMetadata(snContribution);
+                     expect(metadata.status).to.equal(SN_CONTRIB_Status_OpenForPublicContrib);
+                     expect(metadata.blsSignature).to.deep.equal(metadataBefore.blsSignature);
+                     expect(metadata.blsPubkey).to.deep.equal(metadataBefore.blsPubkey);
+                     expect(metadata.serviceNodeParams).to.deep.equal(metadataBefore.serviceNodeParams);
                      expect(await snContribution.maxContributors()).to.equal(maxContributorsBefore);
                  });
 
@@ -818,7 +839,8 @@ describe("ServiceNodeContribution Contract Tests", function () {
              it("Should allow operator to withdraw (which resets the contract)", async function () {
                  const [owner, contributor] = await ethers.getSigners();
                  await snContribution.connect(owner).withdrawContribution();
-                 await expect(await snContribution.status()).to.equal(SN_CONTRIB_Status_WaitForOperatorContrib)
+                 metadata = await getContractMetadata(snContribution);
+                 expect(metadata.status).to.equal(SN_CONTRIB_Status_WaitForOperatorContrib)
              });
 
              it("Should revert withdrawal if less than 24 hours have passed", async function () {
@@ -1261,11 +1283,11 @@ describe("ServiceNodeContribution Contract Tests", function () {
             await expect(snContribution.connect(snOperator).updateFee(1n))
                 .to.not.be.reverted;
 
-            const params = await snContribution.serviceNodeParams();
-            expect(params.serviceNodePubkey).to.equal(oldNode.snParams.serviceNodePubkey);
-            expect(params.fee).to.equal(1n);
-            expect(params.serviceNodeSignature1).to.deep.equal(oldNode.snParams.serviceNodeSignature1);
-            expect(params.serviceNodeSignature2).to.deep.equal(oldNode.snParams.serviceNodeSignature2);
+            const metadata = await getContractMetadata(snContribution);
+            expect(metadata.serviceNodeParams[0]).to.equal(oldNode.snParams.serviceNodePubkey);
+            expect(metadata.fee).to.equal(1n);
+            expect(metadata.serviceNodeSignature1).to.deep.equal(oldNode.snParams.serviceNodeSignature1);
+            expect(metadata.serviceNodeSignature2).to.deep.equal(oldNode.snParams.serviceNodeSignature2);
         });
 
         it("Should allow operator to update pubkeys before other contributions", async function () {
@@ -1316,7 +1338,9 @@ describe("ServiceNodeContribution Contract Tests", function () {
             const stakingRequirement  = await snContribution.stakingRequirement();
             await sentToken.connect(snOperator).approve(snContribution.target, stakingRequirement);
             await snContribution.connect(snOperator).contributeFunds(stakingRequirement, beneficiaryData);
-            expect(await snContribution.status()).to.equal(SN_CONTRIB_Status_Finalized);
+
+            metadata = await getContractMetadata(snContribution);
+            expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
 
             // Try to update fee after finalization
             await expect(snContribution.connect(snOperator).updateFee(1n))
@@ -1328,7 +1352,9 @@ describe("ServiceNodeContribution Contract Tests", function () {
             const stakingRequirement  = await snContribution.stakingRequirement();
             await sentToken.connect(snOperator).approve(snContribution.target, stakingRequirement);
             await snContribution.connect(snOperator).contributeFunds(stakingRequirement, beneficiaryData);
-            expect(await snContribution.status()).to.equal(SN_CONTRIB_Status_Finalized);
+
+            metadata = await getContractMetadata(snContribution);
+            expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
 
             // Try to update pubkey after finalization
             await expect(snContribution.connect(snOperator).updatePubkeys(newNode.blsPubkey,
@@ -1344,7 +1370,9 @@ describe("ServiceNodeContribution Contract Tests", function () {
             const stakingRequirement  = await snContribution.stakingRequirement();
             await sentToken.connect(snOperator).approve(snContribution.target, stakingRequirement);
             await snContribution.connect(snOperator).contributeFunds(stakingRequirement, beneficiaryData);
-            expect(await snContribution.status()).to.equal(SN_CONTRIB_Status_Finalized);
+
+            metadata = await getContractMetadata(snContribution);
+            expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
 
             // Reset the contract
             await snContribution.connect(snOperator).reset();
@@ -1365,7 +1393,9 @@ describe("ServiceNodeContribution Contract Tests", function () {
             const stakingRequirement  = await snContribution.stakingRequirement();
             await sentToken.connect(snOperator).approve(snContribution.target, stakingRequirement);
             await snContribution.connect(snOperator).contributeFunds(stakingRequirement, beneficiaryData);
-            expect(await snContribution.status()).to.equal(SN_CONTRIB_Status_Finalized);
+
+            metadata = await getContractMetadata(snContribution);
+            expect(metadata.status).to.equal(SN_CONTRIB_Status_Finalized);
 
 
             // Reset the contract
