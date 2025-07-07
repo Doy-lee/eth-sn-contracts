@@ -173,13 +173,15 @@ elif args.stagenet:
     )
 elif args.testnet:
     print("Configured for Oxen testnet")
-    sent_addr, snrewards_addr = (
+    sesh_addr, snrewards_addr = (
         "0xA5E28A879F464438Bb300903464382feA62828D0",
         "0x0B5C58A27A41D5fE3FF83d74060d761D7dDDc1D2",
     )
 else:
-    print(f"This script does not support Session {netname} yet!", file=sys.stderr)
-    sys.exit(1)
+    sesh_addr, snrewards_addr = (
+        "0x10Ea9E5303670331Bdddfa66A4cEA47dae4fcF3b",
+        "0xC2B9fC251aC068763EbDfdecc792E3352E351c00",
+    )
 
 
 SESH = get_contract("SESH.sol:SESH", sesh_addr).functions
@@ -281,7 +283,7 @@ while True:
 
         for sn in r:
             pk = sn["service_node_pubkey"]
-            bls = sn["info"]["bls_public_key"]
+            bls = sn["info"]["pubkey_bls"]
             if pk in liquidated:
                 verbose(f"Already liquidated {pk}")
             elif bls not in contract_nodes:
@@ -300,11 +302,13 @@ while True:
         print(f"oxend liquidation list request failed: {e}", file=sys.stderr)
         continue
 
+    if len(liquidate) > 0:
+        print(f"Proceeding to liquidate {len(liquidate)} eligible nodes")
     for sn in liquidate:
         try:
             pk = sn["service_node_pubkey"]
             info = sn["info"]
-            print(f"\nLiquidating SN {pk}\n    BLS: {info['bls_public_key']}")
+            print(f"\nLiquidating SN {pk}\n    BLS: {info['pubkey_bls']}")
 
             r = requests.post(
                 oxen_rpc,
